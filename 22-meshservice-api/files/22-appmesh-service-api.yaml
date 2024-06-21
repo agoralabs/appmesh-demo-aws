@@ -1,0 +1,250 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: service-api
+  labels:
+    mesh: k8s-mesh-staging
+    appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init-db-config
+  namespace: service-api
+data:
+  init-db.sh: |
+    #!/bin/bash
+
+    set -e
+
+    DB_NAME="employees"
+    DB_USER="employe"
+    DB_PASSWORD="password"
+    DB_HOST="postgreapi.postgreapi.svc.cluster.local"
+    DB_PORT="5432"
+
+    export PGPASSWORD=$DB_PASSWORD
+
+    echo "Checking if database $DB_NAME exists..."
+
+    if psql -h $DB_HOST -U $DB_USER -lqt | cut -d \| -f 1 | grep -qw $DB_NAME; then
+      echo "Database $DB_NAME already exists."
+    else
+      echo "Database $DB_NAME does not exist. Creating..."
+      psql -h $DB_HOST -U $DB_USER -c "CREATE DATABASE $DB_NAME"
+    fi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-api-config
+  namespace: service-api
+data:
+  application.yml: |
+    spring:
+      application:
+        name: service-api
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: https://cognito-idp.us-west-2.amazonaws.com/us-west-2_Zzevn4wv0
+      jackson:
+        property-naming-strategy: SNAKE_CASE
+      flyway:
+        locations: classpath:/db/migration
+        schemas: employees
+        baselineOnMigrate: true
+        enabled: true
+      datasource:
+        driverClassName: org.postgresql.Driver
+        url: jdbc:postgresql://postgreapi.postgreapi.svc.cluster.local:5432/employees?currentSchema=employees
+        username: employe
+        password: password
+    server:
+      port: 8084
+    springdoc:
+      api-docs:
+        path: /api-docs
+      swagger-ui:
+        path: /swagger-ui.html
+        enabled: true
+      show-actuator: true
+      swagger-ui.use-root-path: false
+    logging:
+      level:
+        root: DEBUG
+    web:
+      cors:
+        allowed-origins: "*"
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-api
+  namespace: service-api
+data:
+  # Configuration values can be set as key-value properties
+  ENV_APP_BE_LOCAL_PORT: "8084"
+  ENV_APP_GL_AWS_REGION: "us-west-2"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-api
+  namespace: service-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-api
+  template:
+    metadata:
+      labels:
+        app: service-api
+      annotations:
+        appmesh.k8s.aws/egressIgnoredPorts: "5432"
+    spec:
+      serviceAccountName: service-api
+      initContainers:
+      - name: init-db
+        image: postgres:latest
+        env:
+        - name: PGPASSWORD
+          value: password
+        command: ['sh', '/docker-entrypoint-initdb.d/init-db.sh']
+        volumeMounts:
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+      containers:
+        - name: service-api
+          image: 041292242005.dkr.ecr.us-west-2.amazonaws.com/springbootapi:24.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8084
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config/application.yml
+              subPath: application.yml
+          startupProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          envFrom:
+          - configMapRef: 
+              name: service-api
+      restartPolicy: Always
+      volumes:
+      - name: config-volume
+        configMap:
+          name: service-api-config
+      - name: init-script
+        configMap:
+          name: init-db-config
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-api
+  namespace: service-api
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::041292242005:role/k8s-mesh-staging-eks-service-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-api
+  namespace: service-api
+spec:
+  ports:
+    - port: 8084
+      protocol: TCP
+  selector:
+    app: service-api
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: service-api
+  namespace: service-api
+spec:
+  podSelector:
+    matchLabels:
+      app: service-api
+  listeners:
+    - portMapping:
+        port: 8084
+        protocol: http
+  serviceDiscovery:
+    #dns:
+      #hostname: service-api.service-api.svc.cluster.local
+    awsCloudMap:
+      serviceName: service-api
+      namespaceName: k8s-mesh-staging
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualRouter
+metadata:
+  name: service-api
+  namespace: service-api
+spec:
+  listeners:
+    - portMapping:
+        port: 8084
+        protocol: http
+  routes:
+    - name: service-api
+      httpRoute:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeRef:
+                name: service-api
+              weight: 1
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: service-api
+  namespace: service-api
+spec:
+  awsName: service-api.service-api.svc.cluster.local
+  provider:
+    virtualRouter:
+      virtualRouterRef:
+        name: service-api
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: GatewayRoute
+metadata:
+  name: service-api
+  namespace: service-api
+spec:
+  httpRoute:
+    match:
+      prefix: "/"
+      hostname:
+        exact: service-api.skyscaledev.com
+    action:
+      target:
+        virtualService:
+          virtualServiceRef:
+            name: service-api
+

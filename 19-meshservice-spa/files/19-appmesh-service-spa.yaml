@@ -1,0 +1,159 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: service-spa
+  labels:
+    mesh: k8s-mesh-staging
+    appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-spa
+  namespace: service-spa
+data:
+  # Configuration values can be set as key-value properties
+  ENV_APP_KC_URL: "https://keycloak-demo1-prod.skyscaledev.com/"
+  ENV_APP_BE_LOCAL_PORT: "8083"
+  ENV_APP_BE_URL: "https://service-api.skyscaledev.com/"
+  ENV_APP_GL_IDENTITY_POOL_NAME: "keycloak-identity-pool"
+  ENV_APP_GL_AWS_REGION: "us-west-2"
+  ENV_APP_GL_USER_POOL_ID: "us-west-2_tsWGQOnKJ"
+  ENV_APP_GL_USER_POOL_CLIENT_ID: "2e47n0ef09161gupgk1t3209pl"
+  ENV_APP_GL_OAUTH_DOMAIN: "kaiac.auth.us-west-2.amazoncognito.com"
+  ENV_APP_GL_OAUTH_REDIRECT_LOGIN: "https://service-spa.skyscaledev.com/login"
+  ENV_APP_GL_OAUTH_REDIRECT_LOGOUT: "https://service-spa.skyscaledev.com/login"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-spa
+  namespace: service-spa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-spa
+  template:
+    metadata:
+      labels:
+        app: service-spa
+    spec:
+      serviceAccountName: service-spa
+      containers:
+        - name: service-spa
+          image: 041292242005.dkr.ecr.us-west-2.amazonaws.com/k8s:spa_staging
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8083
+          startupProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          envFrom:
+          - configMapRef: 
+              name: service-spa
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-spa
+  namespace: service-spa
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::041292242005:role/k8s-mesh-staging-eks-service-spa
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-spa
+  namespace: service-spa
+spec:
+  ports:
+    - port: 8083
+      protocol: TCP
+  selector:
+    app: service-spa
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: service-spa
+  namespace: service-spa
+spec:
+  podSelector:
+    matchLabels:
+      app: service-spa
+  listeners:
+    - portMapping:
+        port: 8083
+        protocol: http
+  serviceDiscovery:
+    #dns:
+      #hostname: service-spa.service-spa.svc.cluster.local
+    awsCloudMap:
+      serviceName: service-spa
+      namespaceName: k8s-mesh-staging
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualRouter
+metadata:
+  name: service-spa
+  namespace: service-spa
+spec:
+  listeners:
+    - portMapping:
+        port: 8083
+        protocol: http
+  routes:
+    - name: service-spa
+      httpRoute:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeRef:
+                name: service-spa
+              weight: 1
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: service-spa
+  namespace: service-spa
+spec:
+  awsName: service-spa.service-spa.svc.cluster.local
+  provider:
+    virtualRouter:
+      virtualRouterRef:
+        name: service-spa
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: GatewayRoute
+metadata:
+  name: service-spa
+  namespace: service-spa
+spec:
+  httpRoute:
+    match:
+      prefix: "/"
+      hostname:
+        exact: service-spa.skyscaledev.com
+    action:
+      target:
+        virtualService:
+          virtualServiceRef:
+            name: service-spa
+

@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0",
+    "node-jose": "^2.2.0",
+    "util": "^0.12.5",
+    "cookie": "^0.6.0"
+  }
+}

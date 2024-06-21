@@ -1,0 +1,285 @@
+{
+    "token": {
+        "method": "POST",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/realms/master/protocol/openid-connect/token",
+        "headers" : ["Content-Type: application/x-www-form-urlencoded"],
+        "body" : [
+            "client_id=admin-cli",
+            "username=admin",
+            "password=keycloak",
+            "grant_type=password"
+        ],
+        "extract" : ".access_token"
+    },
+    "create": {
+        "method": "POST",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/admin/realms",
+        "headers" : ["Content-Type: application/json"],
+        "body" : 
+        {
+            "realm": "rcognito",
+            "enabled": true,
+            "requiredCredentials": [
+              "password"
+            ],
+            "users": [
+              {
+                "username": "alice",
+                "firstName": "Alice",
+                "lastName": "Liddel",
+                "email": "alice@keycloak.org",
+                "enabled": true,
+                "credentials": [
+                  {
+                    "type": "password",
+                    "value": "alice"
+                  }
+                ],
+                "realmRoles": [
+                  "user", "offline_access"
+                ],
+                "clientRoles": {
+                  "account": [ "manage-account" ]
+                  }
+              },
+              {
+                "username": "jdoe",
+                "firstName": "jdoe",
+                "lastName": "jdoe",
+                "email": "jdoe@keycloak.org",
+                "enabled": true,
+                "credentials": [
+                  {
+                    "type": "password",
+                    "value": "jdoe"
+                  }
+                ],
+                "realmRoles": [
+                  "user",
+                  "user_premium"
+                ]
+              },
+              {
+                "username": "service-account-authz-servlet",
+                "enabled": true,
+                "serviceAccountClientId": "authz-servlet",
+                "clientRoles": {
+                  "authz-servlet" : ["uma_protection"]
+                }
+              },
+              {
+                  "username" : "admin",
+                  "enabled": true,
+                  "email" : "test@admin.org",
+                  "firstName": "Admin",
+                  "lastName": "Test",
+                  "credentials" : [
+                  { "type" : "password",
+                      "value" : "admin" }
+                  ],
+                  "realmRoles": [ "user","admin" ],
+                  "clientRoles": {
+                  "realm-management": [ "realm-admin" ],
+                  "account": [ "manage-account" ]
+                  }
+              }
+            ],
+            "roles": {
+              "realm": [
+                {
+                  "name": "user",
+                  "description": "User privileges"
+                },
+                {
+                  "name": "user_premium",
+                  "description": "User Premium privileges"
+                },
+                  {
+                  "name": "admin",
+                  "description": "Administrator privileges"
+                  }
+              ]
+            },
+            "clients": [
+              {
+                "clientId": "authz-servlet",
+                "enabled": true,
+                "baseUrl": "https://keycloak-api-prod.skyscaledev.com/authz-servlet",
+                "adminUrl": "https://keycloak-api-prod.skyscaledev.com/authz-servlet",
+                "bearerOnly": false,
+                "redirectUris": [
+                  "https://keycloak-api-prod.skyscaledev.com/authz-servlet/*",
+                  "http://127.0.0.1:8080/authz-servlet/*"
+                ],
+                "secret": "secret",
+                "authorizationServicesEnabled": true,
+                "directAccessGrantsEnabled": true,
+                "authorizationSettings": {
+                  "resources": [
+                    {
+                      "name": "Protected Resource",
+                      "uri": "/*",
+                      "type": "http://servlet-authz/protected/resource",
+                      "scopes": [
+                        {
+                          "name": "urn:servlet-authz:protected:resource:access"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Premium Resource",
+                      "uri": "/protected/premium/*",
+                      "type": "urn:servlet-authz:protected:resource",
+                      "scopes": [
+                        {
+                          "name": "urn:servlet-authz:protected:premium:access"
+                        }
+                      ]
+                    }
+                  ],
+                  "policies": [
+                    {
+                      "name": "Any User Policy",
+                      "description": "Defines that any user can do something",
+                      "type": "role",
+                      "logic": "POSITIVE",
+                      "decisionStrategy": "UNANIMOUS",
+                      "config": {
+                        "roles": "[{\"id\":\"user\"}]"
+                      }
+                    },
+                    {
+                      "name": "Only Premium User Policy",
+                      "description": "Defines that only premium users can do something",
+                      "type": "role",
+                      "logic": "POSITIVE",
+                      "decisionStrategy": "UNANIMOUS",
+                      "config": {
+                        "roles": "[{\"id\":\"user_premium\"}]"
+                      }
+                    },
+                    {
+                      "name": "All Users Policy",
+                      "description": "Defines that all users can do something",
+                      "type": "aggregate",
+                      "logic": "POSITIVE",
+                      "decisionStrategy": "AFFIRMATIVE",
+                      "config": {
+                        "applyPolicies": "[\"Any User Policy\",\"Only Premium User Policy\"]"
+                      }
+                    },
+                    {
+                      "name": "Premium Resource Permission",
+                      "description": "A policy that defines access to premium resources",
+                      "type": "resource",
+                      "logic": "POSITIVE",
+                      "decisionStrategy": "UNANIMOUS",
+                      "config": {
+                        "resources": "[\"Premium Resource\"]",
+                        "applyPolicies": "[\"Only Premium User Policy\"]"
+                      }
+                    },
+                    {
+                      "name": "Protected Resource Permission",
+                      "description": "A policy that defines access to any protected resource",
+                      "type": "resource",
+                      "logic": "POSITIVE",
+                      "decisionStrategy": "UNANIMOUS",
+                      "config": {
+                        "resources": "[\"Protected Resource\"]",
+                        "applyPolicies": "[\"All Users Policy\"]"
+                      }
+                    }
+                  ],
+                  "scopes": [
+                    {
+                      "name": "urn:servlet-authz:protected:admin:access"
+                    },
+                    {
+                      "name": "urn:servlet-authz:protected:resource:access"
+                    },
+                    {
+                      "name": "urn:servlet-authz:protected:premium:access"
+                    },
+                    {
+                      "name": "urn:servlet-authz:page:main:actionForPremiumUser"
+                    },
+                    {
+                      "name": "urn:servlet-authz:page:main:actionForAdmin"
+                    },
+                    {
+                      "name": "urn:servlet-authz:page:main:actionForUser"
+                    }
+                  ]
+                }
+              },
+              {
+                "clientId": "spa",
+                "enabled": true,
+                "publicClient": true,
+                "directAccessGrantsEnabled": true,
+                "redirectUris": [ "https://service-spa.skyscaledev.com/*" ]
+              },
+              {
+                  "clientId": "rcognitoclient",
+                  "name": "rcognitoclient",
+                  "adminUrl": "https://keycloak-demo1-prod.skyscaledev.com/realms/rcognito",
+                  "alwaysDisplayInConsole": false,
+                  "access": {
+                      "view": true,
+                      "configure": true,
+                      "manage": true
+                  },
+                  "attributes": {},
+                  "authenticationFlowBindingOverrides" : {},
+                  "authorizationServicesEnabled": true,
+                  "bearerOnly": false,
+                  "directAccessGrantsEnabled": true,
+                  "enabled": true,
+                  "protocol": "openid-connect",
+                  "description": "Client OIDC pour application KaiaC",
+          
+                  "rootUrl": "${authBaseUrl}",
+                  "baseUrl": "/realms/rcognito/account/",
+                  "surrogateAuthRequired": false,
+                  "clientAuthenticatorType": "client-secret",
+                  "defaultRoles": [
+                      "manage-account",
+                      "view-profile"
+                  ],
+                  "redirectUris": [
+                      "https://kaiac.auth.us-west-2.amazoncognito.com/oauth2/idpresponse", "https://service-spa.skyscaledev.com/*"
+                  ],
+                  "webOrigins": [],
+                  "notBefore": 0,
+                  "consentRequired": false,
+                  "standardFlowEnabled": true,
+                  "implicitFlowEnabled": false,
+                  "serviceAccountsEnabled": true,
+                  "publicClient": false,
+                  "frontchannelLogout": false,
+                  "fullScopeAllowed": false,
+                  "nodeReRegistrationTimeout": 0,
+                  "defaultClientScopes": [
+                      "web-origins",
+                      "role_list",
+                      "profile",
+                      "roles",
+                      "email"
+                  ],
+                  "optionalClientScopes": [
+                      "address",
+                      "phone",
+                      "offline_access",
+                      "microprofile-jwt"
+                  ]
+              }
+            ]
+          }          
+        
+    },
+    "destroy": {
+        "method": "DELETE",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/admin/realms/rcognito"
+    }
+}

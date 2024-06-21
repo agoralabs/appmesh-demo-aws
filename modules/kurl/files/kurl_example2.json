@@ -1,0 +1,84 @@
+{
+    "token": {
+        "method": "POST",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/realms/master/protocol/openid-connect/token",
+        "headers" : ["Content-Type: application/x-www-form-urlencoded"],
+        "body" : [
+            "client_id=admin-cli",
+            "username=admin",
+            "password=keycloak",
+            "grant_type=password"
+        ],
+        "extract" : ".access_token"
+    },
+    "create": {
+        "method": "POST",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/admin/realms/rcognito/clients",
+        "headers" : ["Content-Type: application/json"],
+        "body" : 
+        {
+            "clientId": "rcognitoclient",
+            "name": "rcognitoclient",
+            "adminUrl": "https://keycloak-demo1-prod.skyscaledev.com/realms/rcognito",
+            "alwaysDisplayInConsole": false,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            },
+            "attributes": {},
+            "authenticationFlowBindingOverrides" : {},
+            "authorizationServicesEnabled": true,
+            "bearerOnly": false,
+            "directAccessGrantsEnabled": true,
+            "enabled": true,
+            "protocol": "openid-connect",
+            "description": "Client OIDC pour application KaiaC",
+    
+            "rootUrl": "${authBaseUrl}",
+            "baseUrl": "/realms/rcognito/account/",
+            "surrogateAuthRequired": false,
+            "clientAuthenticatorType": "client-secret",
+            "defaultRoles": [
+                "manage-account",
+                "view-profile"
+            ],
+            "redirectUris": [
+                "https://kaiac.auth.us-west-2.amazoncognito.com/oauth2/idpresponse"
+            ],
+            "webOrigins": [],
+            "notBefore": 0,
+            "consentRequired": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "frontchannelLogout": false,
+            "fullScopeAllowed": false,
+            "nodeReRegistrationTimeout": 0,
+            "defaultClientScopes": [
+                "web-origins",
+                "role_list",
+                "profile",
+                "roles",
+                "email"
+            ],
+            "optionalClientScopes": [
+                "address",
+                "phone",
+                "offline_access",
+                "microprofile-jwt"
+            ]
+        }
+    },
+    "identifier": {
+        "method": "GET",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/admin/realms/rcognito/clients",
+        "headers" : ["Content-Type: application/json"],
+        "extract" : ".[] | select(.clientId == \"rcognitoclient\") | .id"
+    },
+    "destroy": {
+        "method": "DELETE",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/admin/realms/rcognito/clients"
+    }
+}

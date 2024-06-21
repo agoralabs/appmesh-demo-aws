@@ -1,0 +1,264 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak-demo1-prod
+  labels:
+    mesh: k8s-mesh-staging
+    appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+data:
+  # Configuration values can be set as key-value properties
+  GF_ADMIN_PASSWORD: "grafana"
+  GF_ADMIN_USERNAME: "admin"
+  GF_URL: "http://localhost:3000"
+  KC_DB: "postgres"
+  KC_DB_PASSWORD: "password"
+  KC_DB_URL: "jdbc:postgresql://postgre.postgre.svc.cluster.local:5432/keycloak"
+  KC_DB_USERNAME: "keycloak"
+  KC_LOG_LEVEL: "INFO"
+  KC_REALM_NAME: "grafana"
+  KEYCLOAK_ADMIN: "admin"
+  KEYCLOAK_ADMIN_PASSWORD: "keycloak"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: realm-config
+  namespace: keycloak-demo1-prod
+data:
+  realm.json: |
+    {
+      "id": "grafana",
+      "realm": "grafana",
+      "sslRequired": "none",
+      "enabled": true,
+      "eventsEnabled": true,
+      "eventsExpiration": 900,
+      "adminEventsEnabled": true,
+      "adminEventsDetailsEnabled": true,
+      "attributes": {
+        "adminEventsExpiration": "900"
+      },
+      "clients": [
+        {
+          "id": "grafana",
+          "clientId": "grafana",
+          "name": "grafana",
+          "enabled": true,
+          "publicClient": true,
+          "rootUrl": "http://localhost:3000",
+          "adminUrl": "http://localhost:3000",
+          "baseUrl": "http://localhost:3000",
+          "redirectUris": [
+            "http://localhost:3000/*"
+          ],
+          "webOrigins": [
+            "http://localhost:3000"
+          ]
+        }
+      ],
+      "users": [
+        {
+          "id": "admin",
+          "email": "admin@admin",
+          "username": "admin",
+          "enabled": true,
+          "emailVerified": true,
+          "credentials": [
+            {
+              "temporary": false,
+              "type": "password",
+              "value": "grafana"
+            }
+          ]
+        }
+      ]
+    }
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak-demo1-prod
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        appmesh.k8s.aws/egressIgnoredPorts: "5432"
+        #appmesh.k8s.aws/proxyIngressPort: "8080"
+      labels:
+        app: keycloak-demo1-prod
+    spec:
+      serviceAccountName: keycloak-demo1-prod
+      containers:
+        - args:
+            - start-dev
+            - --import-realm
+            - --hostname-strict=false
+            - --hostname-strict-https=false
+            - --proxy-headers=forwarded
+            - --health-enabled=true
+            - --metrics-enabled=true
+            - --spi-sticky-session-encoder-infinispan-should-attach-route=false
+            - --hostname-url=https://keycloak-demo1-prod.skyscaledev.com
+            - --hostname-admin-url=https://keycloak-demo1-prod.skyscaledev.com
+          image: quay.io/keycloak/keycloak:24.0.1
+          imagePullPolicy: Always
+          name: keycloak-demo1-prod
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 250
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 250
+            periodSeconds: 10
+          resources:
+              limits:
+                memory: 512Mi
+                cpu: "1"
+              requests:
+                memory: 256Mi
+                cpu: "0.2"
+          volumeMounts:
+            - mountPath: /opt/keycloak/data/import/realm.json
+              subPath: realm.json
+              name: realm-config-volume
+              readOnly: true
+          envFrom:
+          - configMapRef: 
+              name: keycloak-demo1-prod
+      restartPolicy: Always
+      volumes:
+      - name: realm-config-volume
+        configMap:
+          name: realm-config
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::041292242005:role/k8s-mesh-staging-eks-keycloak-demo1-prod
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml
+    kompose.version: 1.33.0 (3ce457399)
+  labels:
+    io.kompose.service: keycloak
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+  selector:
+    app: keycloak-demo1-prod
+    io.kompose.service: keycloak
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: keycloak-demo1-prod
+  listeners:
+    - portMapping:
+        port: 8080
+        protocol: http
+  serviceDiscovery:
+    #dns:
+      #hostname: keycloak-demo1-prod.keycloak-demo1-prod.svc.cluster.local
+    awsCloudMap:
+      serviceName: keycloak-demo1-prod
+      namespaceName: k8s-mesh-staging
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualRouter
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+spec:
+  listeners:
+    - portMapping:
+        port: 8080
+        protocol: http
+  routes:
+    - name: keycloak-demo1-prod
+      httpRoute:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeRef:
+                name: keycloak-demo1-prod
+              weight: 1
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+spec:
+  awsName: keycloak-demo1-prod.keycloak-demo1-prod.svc.cluster.local
+  provider:
+    virtualRouter:
+      virtualRouterRef:
+        name: keycloak-demo1-prod
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: GatewayRoute
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+spec:
+  httpRoute:
+    match:
+      prefix: "/"
+      hostname:
+        exact: keycloak-demo1-prod.skyscaledev.com
+    action:
+      target:
+        virtualService:
+          virtualServiceRef:
+            name: keycloak-demo1-prod
+

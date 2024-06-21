@@ -1,0 +1,5 @@
+{
+  "JWKS_ENDPOINT": "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_Zzevn4wv0/.well-known/jwks.json",
+  "COGNITO_DOMAIN": "kaiac.auth.us-west-2.amazoncognito.com",
+  "CLIENT_ID": "7nigapabjr313r938ngm88se5j"
+}

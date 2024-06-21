@@ -1,0 +1,185 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: postgreapi
+  labels:
+    mesh: k8s-mesh-staging
+    appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgreapi
+  namespace: postgreapi
+data:
+  # Configuration values can be set as key-value properties
+  POSTGRES_DB: "employees"
+  POSTGRES_PASSWORD: "password"
+  POSTGRES_USER: "employe"
+  PGDATA: "/var/lib/postgresql/data/db-files/"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgreapi
+  namespace: postgreapi
+  labels:
+    app: postgreapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgreapi
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        appmesh.k8s.aws/mesh: k8s-mesh-staging
+        appmesh.k8s.aws/virtualNode: postgreapi
+      labels:
+        app: postgreapi
+    spec:
+      serviceAccountName: postgreapi
+      containers:
+        - name: postgreapi
+          image: postgres:15.6-alpine
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5432
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - keycloak
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgreapis-claim0
+              subPath: db-files
+          envFrom:
+          - configMapRef: 
+              name: postgreapi
+      restartPolicy: Always
+      volumes:
+        - name: postgreapis-claim0
+          persistentVolumeClaim:
+            claimName: postgreapis-claim0
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    io.kompose.service: postgreapis-claim0
+  name: postgreapis-claim0
+  namespace: postgreapi
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgreapi
+  namespace: postgreapi
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::041292242005:role/k8s-mesh-staging-eks-postgreapi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgreapi
+  namespace: postgreapi
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+  selector:
+    app: postgreapi
+
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: postgreapi
+  namespace: postgreapi
+spec:
+  podSelector:
+    matchLabels:
+      app: postgreapi
+  listeners:
+    - portMapping:
+        port: 5432
+        protocol: tcp
+  serviceDiscovery:
+    #dns:
+      #hostname: postgreapi.postgreapi.svc.cluster.local
+    awsCloudMap:
+      serviceName: postgreapi
+      namespaceName: k8s-mesh-staging
+
+# ---
+# apiVersion: appmesh.k8s.aws/v1beta2
+# kind: VirtualRouter
+# metadata:
+#   name: postgreapi
+#   namespace: postgreapi
+# spec:
+#   listeners:
+#     - portMapping:
+#         port: 5432
+#         protocol: http
+#   routes:
+#     - name: postgreapi
+#       httpRoute:
+#         match:
+#           prefix: /
+#         action:
+#           weightedTargets:
+#             - virtualNodeRef:
+#                 name: postgreapi
+#               weight: 1
+
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: postgreapi
+  namespace: postgreapi
+spec:
+  #awsName: postgreapi.postgreapi.svc.cluster.local
+  provider:
+    virtualNode:
+      virtualNodeRef:
+        name: postgreapi
+
+
+# ---
+# apiVersion: appmesh.k8s.aws/v1beta2
+# kind: GatewayRoute
+# metadata:
+#   name: postgreapi
+#   namespace: postgreapi
+# spec:
+#   httpRoute:
+#     match:
+#       prefix: "/"
+#       hostname:
+#         exact: postgreapi.skyscaledev.com
+#     action:
+#       target:
+#         virtualService:
+#           virtualServiceRef:
+#             name: postgreapi
+

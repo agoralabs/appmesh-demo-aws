@@ -1,0 +1,22 @@
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualGateway
+metadata:
+  name: appmesh-gateway
+  namespace: gateway
+spec:
+  namespaceSelector:
+    matchLabels:
+      mesh: k8s-mesh-staging
+      appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: appmesh-gateway
+  listeners:
+    - portMapping:
+        port: 8088
+        protocol: http
+  logging:
+    accessLog:
+      file:
+        path: "/dev/stdout"

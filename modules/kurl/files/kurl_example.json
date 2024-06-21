@@ -1,0 +1,190 @@
+{
+    "token": {
+        "method": "POST",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/realms/master/protocol/openid-connect/token",
+        "headers" : ["Content-Type: application/x-www-form-urlencoded"],
+        "body" : [
+            "client_id=admin-cli",
+            "username=admin",
+            "password=keycloak",
+            "grant_type=password"
+        ],
+        "extract" : ".access_token"
+    },
+    "create": {
+        "method": "POST",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/admin/realms",
+        "headers" : ["Content-Type: application/json"],
+        "body" : 
+            {
+                "id": "rcognito",
+                "realm": "rcognito",
+                "notBefore": 0,
+                "revokeRefreshToken": false,
+                "refreshTokenMaxReuse": 0,
+                "accessTokenLifespan": 300,
+                "accessTokenLifespanForImplicitFlow": 900,
+                "ssoSessionIdleTimeout": 1800,
+                "ssoSessionMaxLifespan": 36000,
+                "ssoSessionIdleTimeoutRememberMe": 0,
+                "ssoSessionMaxLifespanRememberMe": 0,
+                "offlineSessionIdleTimeout": 2592000,
+                "offlineSessionMaxLifespanEnabled": false,
+                "offlineSessionMaxLifespan": 5184000,
+                "clientSessionIdleTimeout": 0,
+                "clientSessionMaxLifespan": 0,
+                "accessCodeLifespan": 60,
+                "accessCodeLifespanUserAction": 300,
+                "accessCodeLifespanLogin": 1800,
+                "actionTokenGeneratedByAdminLifespan": 43200,
+                "actionTokenGeneratedByUserLifespan": 300,
+                "enabled": true,
+                "sslRequired": "external",
+                "registrationAllowed": false,
+                "registrationEmailAsUsername": false,
+                "rememberMe": false,
+                "verifyEmail": false,
+                "loginWithEmailAllowed": true,
+                "duplicateEmailsAllowed": false,
+                "resetPasswordAllowed": false,
+                "editUsernameAllowed": false,
+                "bruteForceProtected": false,
+                "permanentLockout": false,
+                "maxFailureWaitSeconds": 900,
+                "minimumQuickLoginWaitSeconds": 60,
+                "waitIncrementSeconds": 60,
+                "quickLoginCheckMilliSeconds": 1000,
+                "maxDeltaTimeSeconds": 43200,
+                "failureFactor": 30,
+                "defaultRoles": [
+                    "offline_access",
+                    "uma_authorization"
+                ],
+                "requiredCredentials": [
+                    "password"
+                ],
+                "otpPolicyType": "totp",
+                "otpPolicyAlgorithm": "HmacSHA1",
+                "otpPolicyInitialCounter": 0,
+                "otpPolicyDigits": 6,
+                "otpPolicyLookAheadWindow": 1,
+                "otpPolicyPeriod": 30,
+                "otpSupportedApplications": [
+                    "FreeOTP",
+                    "Google Authenticator"
+                ],
+                "webAuthnPolicyRpEntityName": "keycloak",
+                "webAuthnPolicySignatureAlgorithms": [
+                    "ES256"
+                ],
+                "webAuthnPolicyRpId": "",
+                "webAuthnPolicyAttestationConveyancePreference": "not specified",
+                "webAuthnPolicyAuthenticatorAttachment": "not specified",
+                "webAuthnPolicyRequireResidentKey": "not specified",
+                "webAuthnPolicyUserVerificationRequirement": "not specified",
+                "webAuthnPolicyCreateTimeout": 0,
+                "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+                "webAuthnPolicyAcceptableAaguids": [],
+                "webAuthnPolicyPasswordlessRpEntityName": "keycloak",
+                "webAuthnPolicyPasswordlessSignatureAlgorithms": [
+                    "ES256"
+                ],
+                "webAuthnPolicyPasswordlessRpId": "",
+                "webAuthnPolicyPasswordlessAttestationConveyancePreference": "not specified",
+                "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
+                "webAuthnPolicyPasswordlessRequireResidentKey": "not specified",
+                "webAuthnPolicyPasswordlessUserVerificationRequirement": "not specified",
+                "webAuthnPolicyPasswordlessCreateTimeout": 0,
+                "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
+                "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+                "browserSecurityHeaders": {
+                    "contentSecurityPolicyReportOnly": "",
+                    "xContentTypeOptions": "nosniff",
+                    "xRobotsTag": "none",
+                    "xFrameOptions": "SAMEORIGIN",
+                    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+                    "xXSSProtection": "1; mode=block",
+                    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+                },
+                "smtpServer": {},
+                "eventsEnabled": false,
+                "eventsListeners": [
+                    "jboss-logging"
+                ],
+                "enabledEventTypes": [],
+                "adminEventsEnabled": false,
+                "adminEventsDetailsEnabled": false,
+                "identityProviders": [
+                    {
+                        "alias": "keycloak-oidc",
+                        "internalId": "d79d0d65-8ee1-47f0-8611-f9e6eea71f20",
+                        "providerId": "keycloak-oidc",
+                        "enabled": true,
+                        "updateProfileFirstLoginMode": "on",
+                        "trustEmail": false,
+                        "storeToken": false,
+                        "addReadTokenRoleOnCreate": false,
+                        "authenticateByDefault": false,
+                        "linkOnly": false,
+                        "firstBrokerLoginFlowAlias": "first broker login",
+                        "config": {
+                            "clientId": "ssss",
+                            "tokenUrl": "http://localhost",
+                            "authorizationUrl": "http://localhost",
+                            "clientAuthMethod": "client_secret_basic",
+                            "syncMode": "IMPORT",
+                            "clientSecret": "assaasa",
+                            "useJwksUrl": "true"
+                        }
+                    },
+                    {
+                        "alias": "keycloak-oidc-2",
+                        "internalId": "7cf3fd74-8d3a-4c8d-b651-fcc885df8a31",
+                        "providerId": "keycloak-oidc",
+                        "enabled": true,
+                        "updateProfileFirstLoginMode": "on",
+                        "trustEmail": false,
+                        "storeToken": false,
+                        "addReadTokenRoleOnCreate": false,
+                        "authenticateByDefault": false,
+                        "linkOnly": false,
+                        "firstBrokerLoginFlowAlias": "first broker login",
+                        "config": {}
+                    }
+                ],
+                "identityProviderMappers": [
+                    {
+                        "id": "42c7b62d-4383-42c9-a8a0-65519e2c2543",
+                        "name": "test-mapper",
+                        "identityProviderAlias": "keycloak-oidc2",
+                        "identityProviderMapper": "keycloak-oidc",
+                        "config": {}
+                    },
+                    {
+                        "id": "ea65c956-24c7-4587-8fe7-c07222e3485d",
+                        "name": "test",
+                        "identityProviderAlias": "keycloak-oidc-2",
+                        "identityProviderMapper": "hardcoded-user-session-attribute-idp-mapper",
+                        "config": {
+                            "syncMode": "INHERIT"
+                        }
+                    }
+                ],
+                "internationalizationEnabled": false,
+                "supportedLocales": [],
+                "browserFlow": "browser",
+                "registrationFlow": "registration",
+                "directGrantFlow": "direct grant",
+                "resetCredentialsFlow": "reset credentials",
+                "clientAuthenticationFlow": "clients",
+                "dockerAuthenticationFlow": "docker auth",
+                "attributes": {},
+                "userManagedAccessAllowed": false
+            }
+        
+    },
+    "destroy": {
+        "method": "DELETE",
+        "location" : "https://keycloak-demo1-prod.skyscaledev.com/admin/realms/rcognito"
+    }
+}
