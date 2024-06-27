@@ -7,6 +7,9 @@ If you still have a doubt for your own organization, just take a look at your wo
 
 Our purpose is to showcase the capabilities of service mesh concept on Amazon Web Services Cloud (AWS) with Terraform. But before diving into terraform code, let's explore some core knowledge to better understanging of the service Mesh interesting concept.
 
+![Mobolith Microservices and Service Mesh](/images/00_monolith_microservices_servicemesh_1.png)
+
+
 ## Why an organization needs a service mesh?
 
 In modern application architecture, you can build applications as a collection of small, independently deployable microservices. Different teams may build individual microservices and choose their coding languages and tools. However, the microservices must communicate for the application code to work correctly.
@@ -140,10 +143,12 @@ Where WORKING_FOLDER is the folder containing terraform .tf files.
 ### Step 1 : Create a VPC 
 
 - cd to **01-vpc** folder.
-- Run apply.sh script : a vpn named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
+- Run **apply.sh** script : a vpn named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
 
 
 ```
+$ ./apply.sh
+
 ...
 Apply complete! Resources: 19 added, 0 changed, 0 destroyed.
 ```
@@ -193,9 +198,12 @@ And if you take a look at the AWS VPC Service Web Console, you should see this :
 ### Step 2 : Create a Kubernetes EKS cluster
 
 - cd to **02-k8scluster** folder.
-- Run apply.sh script : an EKS cluster named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
+- Run **apply.sh** script : an EKS cluster named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
 
 ```
+$ ./apply.sh
+
+...
 Apply complete! Resources: 60 added, 0 changed, 0 destroyed.
 ```
 
@@ -268,9 +276,12 @@ $ eks-node-viewer
 
 
 - cd to **03-karpenter** folder.
-- Run apply.sh script : Karpenter should be installed in your cluster and you should have the following result :
+- Run **apply.sh** script : Karpenter should be installed in your cluster and you should have the following result :
 
 ```
+$ ./apply.sh
+
+...
 Apply complete! Resources: 20 added, 0 changed, 0 destroyed.
 ```
 
@@ -362,11 +373,14 @@ $ eks-node-viewer
 ### Step 4 : Create AppMesh Controller and AppMesh Gateway
 
 - cd to **04-mesh** folder.
-- Run apply.sh script : a Mesh named **k8s-mesh-staging** should be created.
+- Run **apply.sh** script : a Mesh named **k8s-mesh-staging** should be created.
 
 You should also see the following : 
 
 ```
+$ ./apply.sh
+
+...
 Apply complete! Resources: 25 added, 0 changed, 0 destroyed.
 ```
 
@@ -390,6 +404,11 @@ resource "kubectl_manifest" "virtual_gateway" {
     depends_on = [ 
       helm_release.appmesh_gateway
     ]
+}
+
+resource "aws_service_discovery_http_namespace" "service_discovery" {
+  name        = "${local.service_discovery_name}"
+  description = "Service Discovery for App Mesh ${local.service_discovery_name}"
 }
 ```
 
@@ -449,7 +468,8 @@ The script should also create the following resources :
 - Pods for App Mesh Gateway
 - Pods for AWS XRay daemon for Tracing
 - Pods for Amazon CloudWatch daemon for logging
-- Pods for Fluentd daemon for logs aggregation to Cloudwatch 
+- Pods for Fluentd daemon for logs aggregation to Cloudwatch
+- A Service Discovery Namespace in AWS Cloud Map
 
 ```
 $ kubectl get pods --all-namespaces --namespace=appmesh-system,gateway,aws-observability
@@ -480,9 +500,12 @@ appmesh-gateway   LoadBalancer   172.20.82.97   a7d0b077d231e4713a90dbb62382168b
 ### Step 5 : Create an HTTP API Gateway
 
 - cd to **05-apigateway** folder.
-- Run apply.sh script : an API Gateway named **k8s-mesh-staging-api-gw** should be created.
+- Run **apply.sh** script : an API Gateway named **k8s-mesh-staging-api-gw** should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.apigw.aws_apigatewayv2_vpc_link.api_gw: Creating...
 module.apigw.aws_apigatewayv2_api.api_gw: Creating...
 module.apigw.aws_apigatewayv2_api.api_gw: Creation complete after 2s [id=0b0l2fr08e]
@@ -546,7 +569,7 @@ The terraform resource **aws_apigatewayv2_integration and aws_apigatewayv2_route
 We need a persistent volume in the Kubernetes cluster, this volume will be useful to persist datas when needed.
 
 - cd to **06-csivolume** folder.
-- Run apply.sh script : an EBS Volume named **terraform-ebs-volume** should be created and the EBS CSI Driver should be installed in your Kubernetes cluster.
+- Run **apply.sh** script : an EBS Volume named **terraform-ebs-volume** should be created and the EBS CSI Driver should be installed in your Kubernetes cluster.
 
 ```
 Plan: 5 to add, 0 to change, 0 to destroy.
@@ -649,9 +672,12 @@ spec:
 
 ```
 
-- Run apply.sh script : a Persistent Volume named **k8s-mesh-staging-ebs-pv** should be created.
+- Run **apply.sh** script : a Persistent Volume named **k8s-mesh-staging-ebs-pv** should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.k8smanifest.kubectl_manifest.resource["/api/v1/persistentvolumes/k8s-mesh-staging-ebs-pv"]: Creating...
 module.k8smanifest.kubectl_manifest.resource["/api/v1/persistentvolumes/k8s-mesh-staging-ebs-pv"]: Creation complete after 3s [id=/api/v1/persistentvolumes/k8s-mesh-staging-ebs-pv]
 
@@ -674,9 +700,12 @@ So Let's start by creating a user friendly DNS record for Keycloak.
 
 - cd to **08-meshexposer-keycloak** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone.
-- Run apply.sh script : a DNS record **keycloak-demo1-prod.example.com** should be created in your hosted zone.
+- Run **apply.sh** script : a DNS record **keycloak-demo1-prod.example.com** should be created in your hosted zone.
 
 ```
+$ ./apply.sh
+
+...
 module.exposer.aws_apigatewayv2_domain_name.api_gw: Creating...
 module.exposer.aws_apigatewayv2_domain_name.api_gw: Creation complete after 4s [id=keycloak-demo1-prod.example.com]
 module.exposer.aws_apigatewayv2_api_mapping.s1_mapping: Creating...
@@ -688,6 +717,28 @@ module.exposer.aws_route53_record.dnsapi: Creation complete after 46s [id=Z00171
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ```
 
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "aws_apigatewayv2_domain_name" "api_gw" {
+  domain_name = "${var.dns_record_name}.${var.dns_domain}"
+  domain_name_configuration {
+    certificate_arn = data.aws_acm_certificate.acm_cert.arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+}
+
+resource "aws_route53_record" "dnsapi" {
+  zone_id = data.aws_route53_zone.dns_zone.zone_id
+  name    = "${var.dns_record_name}"
+  type    = "CNAME"
+  records = [local.api_gw_endpoint]
+  ttl     = 300
+}
+```
+
 - Verify that the created DNS Record value is the API Gateway Endpoint.
 
 ![DNS Record Keycloak](/images/08_dns_record_keycloak_1.png)
@@ -695,13 +746,205 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ### Step 9 : Deploy a Postgre database for Keycloak inside the App Mesh
 
 - cd to **09-meshservice-postgre-keycloak** folder.
-- Run apply.sh script : a Postgre SQL pod should be created.
+- Run **apply.sh** script : a Postgre SQL pod should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.appmeshservice.kubectl_manifest.resource["/apis/apps/v1/namespaces/postgre/deployments/postgre"]: Creation complete after 1m0s [id=/apis/apps/v1/namespaces/postgre/deployments/postgre]
 
 Apply complete! Resources: 14 added, 0 changed, 0 destroyed.
 ```
+
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "kubectl_manifest" "resource" {
+    for_each  = data.kubectl_file_documents.docs.manifests
+    yaml_body = each.value
+}
+
+data "aws_service_discovery_http_namespace" "service_discovery" {
+  name = "${local.service_discovery_name}"
+}
+
+resource "aws_service_discovery_service" "service" {
+  name         = "${var.service_name}"
+  namespace_id = data.aws_service_discovery_http_namespace.service_discovery.id
+}
+```
+
+Those section are used to :
+  - apply the manifest documents for the postgre SQL instance, 
+  - and also to register the postgre service in the AWS Cloud Map namespace created in step 4.
+
+Here is an overview of the manifest files :
+
+> [!NOTE]
+> **Namespace** : App Mesh uses namespace and/or pod annotations to determine if pods in a namespace will be marked for sidecar injection. To achieve this add **appmesh.k8s.aws/sidecarInjectorWebhook: enabled:** annotation, to inject the sidecar into pods by default inside this namespace.  
+
+```
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: postgre
+  labels:
+    mesh: k8s-mesh-staging
+    appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+```
+
+> [!NOTE]
+> **ServiceAccount** : A service account provides an identity for processes that run in a Pod, and maps to a ServiceAccount object.
+
+```
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgre
+  namespace: postgre
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::041292242005:role/k8s-mesh-staging-eks-postgre
+
+```
+
+> [!NOTE]
+> **Deployment** : You create a Deployment to manage your pods easily. This is your application.  
+
+```
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgre
+  namespace: postgre
+  labels:
+    app: postgre
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgre
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        appmesh.k8s.aws/mesh: k8s-mesh-staging
+        appmesh.k8s.aws/virtualNode: postgre
+      labels:
+        app: postgre
+    spec:
+      serviceAccountName: postgre
+      containers:
+        - name: postgre
+          image: postgres:15.6-alpine
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5432
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - keycloak
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-claim0
+              subPath: db-files
+          envFrom:
+          - configMapRef: 
+              name: postgre
+      restartPolicy: Always
+      volumes:
+        - name: postgres-claim0
+          persistentVolumeClaim:
+            claimName: postgres-claim0
+
+```
+
+> [!NOTE]
+> **PersistentVolumeClaim** : For persistent storage requirements, we have already provision a Persistent Volume in step 6. To bind a pod to a PV, the pod must contain a volume mount and a Persistent Volume Claim (PVC).  
+
+```
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    io.kompose.service: postgres-claim0
+  name: postgres-claim0
+  namespace: postgre
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+```
+
+> [!NOTE]
+> **Service** : Use a Service to expose your application that is running as one or more Pods in your cluster.  
+
+```
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgre
+  namespace: postgre
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+  selector:
+    app: postgre
+```
+
+> [!NOTE]
+> **VirtualNode** : In App Mesh, a virtual node acts as a logical pointer to a Kubernetes deployment via a service. The *serviceDiscovery* attribute indicates that the service will be discovered via App Mesh.
+
+```
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: postgre
+  namespace: postgre
+spec:
+  podSelector:
+    matchLabels:
+      app: postgre
+  listeners:
+    - portMapping:
+        port: 5432
+        protocol: tcp
+  serviceDiscovery:
+    awsCloudMap:
+      serviceName: postgre
+      namespaceName: k8s-mesh-staging
+```
+
+> [!NOTE]
+> **VirtualService** : A virtual service is an abstraction of a real service that is provided by a virtual node directly or indirectly by means of a virtual router. Dependent services call your virtual service by its virtualServiceName, and those requests are routed to the virtual node or virtual router that is specified as the provider for the virtual service.  
+
+```
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: postgre
+  namespace: postgre
+spec:
+  provider:
+    virtualNode:
+      virtualNodeRef:
+        name: postgre
+```
+
 
 - Verify the created PostgreSQL pod :
 
@@ -718,13 +961,100 @@ postgre-58fbbd958d-w8zhh   3/3     Running   0          10m
 ### Step 10 : Deploy Keycloak inside the App Mesh
 
 - cd to **10-meshservice-keycloak** folder.
-- Run apply.sh script : a Keycloak pod should be created.
+- Run **apply.sh** script : a Keycloak pod should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.appmeshservice.kubectl_manifest.resource["/apis/apps/v1/namespaces/keycloak-demo1-prod/deployments/keycloak-demo1-prod"]: Creation complete after 5m6s [id=/apis/apps/v1/namespaces/keycloak-demo1-prod/deployments/keycloak-demo1-prod]
 
 Apply complete! Resources: 14 added, 0 changed, 0 destroyed.
 ```
+
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "kubectl_manifest" "resource" {
+    for_each  = data.kubectl_file_documents.docs.manifests
+    yaml_body = each.value
+}
+
+data "aws_service_discovery_http_namespace" "service_discovery" {
+  name = "${local.service_discovery_name}"
+}
+
+resource "aws_service_discovery_service" "service" {
+  name         = "${var.service_name}"
+  namespace_id = data.aws_service_discovery_http_namespace.service_discovery.id
+}
+```
+
+Those section are used to :
+  - apply the manifest documents for the Keycloak instance, 
+  - and also to register the keycloak service in the AWS Cloud Map namespace created in step 4.
+
+Here is an overview of the manifest files :
+
+> [!NOTE]
+> **Namespace, ServiceAccount, Deployment, Service, VirtualNode and VirtualService** are already covered in step 9.  
+
+> [!NOTE]
+> **VirtualRouter** : Virtual routers handle traffic for one or more virtual services within your mesh. After you create a virtual router, you can create and associate routes for your virtual router that direct incoming requests to different virtual nodes.  
+
+![Virtual Router concept](/images/10_virtual_router_concept.png)
+
+```
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualRouter
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+spec:
+  listeners:
+    - portMapping:
+        port: 8080
+        protocol: http
+  routes:
+    - name: keycloak-demo1-prod
+      httpRoute:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeRef:
+                name: keycloak-demo1-prod
+              weight: 1
+```
+
+
+> [!NOTE]
+> **GatewayRoute** : A gateway route is attached to a virtual gateway and routes traffic to an existing virtual service. If a route matches a request, it can distribute traffic to a target virtual service.
+
+![Virtual Router concept](/images/10_virtual_router_concept.png)
+
+```
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: GatewayRoute
+metadata:
+  name: keycloak-demo1-prod
+  namespace: keycloak-demo1-prod
+spec:
+  httpRoute:
+    match:
+      prefix: "/"
+      hostname:
+        exact: keycloak-demo1-prod.skyscaledev.com
+    action:
+      target:
+        virtualService:
+          virtualServiceRef:
+            name: keycloak-demo1-prod
+```
+
 
 - Verify the created Keycloak pod :
 
@@ -745,9 +1075,12 @@ keycloak-demo1-prod-7857d7d59d-7qbfw   3/3     Running   0          11m
 ### Step 11 : Create a realm in Keycloak
 
 - cd to **11-kurler-keycloak-realm** folder.
-- Run apply.sh script : a Keycloak Realm should be created.
+- Run **apply.sh** script : a Keycloak Realm should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.kurl.null_resource.kurl_command: Creation complete after 11s [id=9073997509073050065]
 
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
@@ -760,7 +1093,7 @@ Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 ### Step 12 : Create a Cognito user pool to federate Keycloak identities
 
 - cd to **12-fedusers** folder.
-- Run apply.sh script : a Cognito User Pool should be created.
+- Run **apply.sh** script : a Cognito User Pool should be created.
 
 ```
 module.cogusrpool.aws_cognito_identity_provider.keycloak_oidc: Creation complete after 1s [id=us-west-2_BPVSBRdNl:keycloak]
@@ -780,9 +1113,12 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ### Step 13 : Create a Cognito user pool client to integrate a Single Page Application (OAuth2 implicit flow)
 
 - cd to **13-fedclient-spa** folder.
-- Run apply.sh script : a Cognito User Pool Client should be created.
+- Run **apply.sh** script : a Cognito User Pool Client should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.cogpoolclient.aws_cognito_user_pool_client.user_pool_client: Creating...
 module.cogpoolclient.aws_cognito_user_pool_client.user_pool_client: Creation complete after 1s [id=4ivne28uad3dp6uncttem7sf20]
 
@@ -802,9 +1138,12 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 
 - cd to **14-apiauthorizer** folder.
 - Update the **JWKS_ENDPOINT** value in **files/14_authorizer_real_token_env_vars.json** with the **Token signing key URL** of the Cognito User Pool.
-- Run apply.sh script : a Lambda function named **authorizer** should be created and also attached to the API Gateway.
+- Run **apply.sh** script : a Lambda function named **authorizer** should be created and also attached to the API Gateway.
 
 ```
+$ ./apply.sh
+
+...
 module.authorizer.null_resource.attach_authorizer (local-exec): {
 module.authorizer.null_resource.attach_authorizer (local-exec):     "ApiKeyRequired": false,
 module.authorizer.null_resource.attach_authorizer (local-exec):     "AuthorizationType": "CUSTOM",
@@ -835,9 +1174,12 @@ Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 - Update the file **files/14_authorizer_real_token_env_vars.json** 
   - **JWKS_ENDPOINT** with the **Token signing key URL** of the Cognito User Pool.
   - **CLIENT_ID** with Client ID of the Cognito User Pool client created for SPA.
-- Run apply.sh script : a Lambda function named **lamda_edge** should be created in **us-east-1** region.
+- Run **apply.sh** script : a Lambda function named **lamda_edge** should be created in **us-east-1** region.
 
 ```
+$ ./apply.sh
+
+...
 module.lambda_edge.aws_lambda_function.lambda_edge: Creating...
 module.lambda_edge.aws_lambda_function.lambda_edge: Still creating... [10s elapsed]
 module.lambda_edge.aws_lambda_function.lambda_edge: Creation complete after 13s [id=lamda_edge]
@@ -850,7 +1192,7 @@ Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 ### Step 16 : Create a Cloudfront distribution with the API Gateway as origin and the Lambda@Edge attached in the View-Request
 
 - cd to **16-apigwfront** folder.
-- Run apply.sh script : a Cloudfront distribution with the API Gateway as origin should be created and the Lambda@Edge attached in the View-Request.
+- Run **apply.sh** script : a Cloudfront distribution with the API Gateway as origin should be created and the Lambda@Edge attached in the View-Request.
 
 ```
 module.cloudfront.aws_cloudfront_distribution.distribution: Still creating... [6m10s elapsed]
@@ -866,9 +1208,12 @@ Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
 - cd to **17-meshcfexposer-spa** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone and the Cloudfront Distribution ID.
-- Run apply.sh script : a DNS record **front-service-spa.example.com** should be created in your hosted zone.
+- Run **apply.sh** script : a DNS record **front-service-spa.example.com** should be created in your hosted zone.
 
 ```
+$ ./apply.sh
+
+...
 module.cfexposer.null_resource.alias (local-exec): Alias front-service-spa.skyscaledev.com ajouté à la distribution CloudFront EHJSCY1ZDZ8CD
 module.cfexposer.null_resource.alias: Creation complete after 4s [id=4441363320886135252]
 
@@ -879,7 +1224,7 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 
 - cd to **18-meshexposer-spa** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone.
-- Run apply.sh script : a DNS record **service-spa.example.com** should be created in your hosted zone.
+- Run **apply.sh** script : a DNS record **service-spa.example.com** should be created in your hosted zone.
 
 ```
 Plan: 3 to add, 0 to change, 0 to destroy.
@@ -921,9 +1266,12 @@ data:
   ENV_APP_GL_OAUTH_REDIRECT_LOGOUT: "https://service-spa.skyscaledev.com/login"
 ```
 
-- Run apply.sh script : The spa should be created.
+- Run **apply.sh** script : The spa should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.appmeshservice.kubectl_manifest.resource["/apis/apps/v1/namespaces/service-spa/deployments/service-spa"]: Creation complete after 1m42s [id=/apis/apps/v1/namespaces/service-spa/deployments/service-spa]
 
 Apply complete! Resources: 13 added, 0 changed, 0 destroyed.
@@ -947,7 +1295,7 @@ service-spa-7b4884cd4f-pzpjl   3/3     Running   0          2m49s
 ### Step 20 : Deploy a Postgre database for the API inside the App Mesh
 
 - cd to **20-meshservice-postgre-api** folder.
-- Run apply.sh script : a Postgre SQL pod should be created.
+- Run **apply.sh** script : a Postgre SQL pod should be created.
 
 ```
 module.appmeshservice.kubectl_manifest.resource["/apis/apps/v1/namespaces/postgreapi/deployments/postgreapi"]: Creation complete after 50s [id=/apis/apps/v1/namespaces/postgreapi/deployments/postgreapi]
@@ -978,6 +1326,9 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 - cd to **22-meshservice-api** folder.
 
 ```
+$ ./apply.sh
+
+...
 module.appmeshservice.kubectl_manifest.resource["/apis/apps/v1/namespaces/service-api/deployments/service-api"]: Creation complete after 1m20s [id=/apis/apps/v1/namespaces/service-api/deployments/service-api]
 
 Apply complete! Resources: 15 added, 0 changed, 0 destroyed.
@@ -986,9 +1337,12 @@ Apply complete! Resources: 15 added, 0 changed, 0 destroyed.
 ### Step 23 : Create a Cognito user pool client to integrate an API (OAuth2 client_credentials flow)
 
 - cd to **23-fedclient-api** folder.
-- Run apply.sh script : a userpool client named **springbootapi** should be created.
+- Run **apply.sh** script : a userpool client named **springbootapi** should be created.
 
 ```
+$ ./apply.sh
+
+...
 module.cogpoolclient.aws_cognito_user_pool_client.user_pool_client: Creation complete after 0s [id=3gcoov4vlfqhmuimqildosljr6]
 
 Apply complete! Resources: 2 added, 0 changed, 0 destroyed.

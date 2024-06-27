@@ -131,27 +131,27 @@ spec:
       serviceName: postgre
       namespaceName: k8s-mesh-staging
 
----
-apiVersion: appmesh.k8s.aws/v1beta2
-kind: VirtualRouter
-metadata:
-  name: postgre
-  namespace: postgre
-spec:
-  listeners:
-    - portMapping:
-        port: 5432
-        protocol: http
-  routes:
-    - name: postgre
-      httpRoute:
-        match:
-          prefix: /
-        action:
-          weightedTargets:
-            - virtualNodeRef:
-                name: postgre
-              weight: 1
+# ---
+# apiVersion: appmesh.k8s.aws/v1beta2
+# kind: VirtualRouter
+# metadata:
+#   name: postgre
+#   namespace: postgre
+# spec:
+#   listeners:
+#     - portMapping:
+#         port: 5432
+#         protocol: http
+#   routes:
+#     - name: postgre
+#       httpRoute:
+#         match:
+#           prefix: /
+#         action:
+#           weightedTargets:
+#             - virtualNodeRef:
+#                 name: postgre
+#               weight: 1
 
 ---
 apiVersion: appmesh.k8s.aws/v1beta2
@@ -167,21 +167,21 @@ spec:
         name: postgre
 
 
----
-apiVersion: appmesh.k8s.aws/v1beta2
-kind: GatewayRoute
-metadata:
-  name: postgre
-  namespace: postgre
-spec:
-  httpRoute:
-    match:
-      prefix: "/"
-      hostname:
-        exact: postgre.skyscaledev.com
-    action:
-      target:
-        virtualService:
-          virtualServiceRef:
-            name: postgre
+# ---
+# apiVersion: appmesh.k8s.aws/v1beta2
+# kind: GatewayRoute
+# metadata:
+#   name: postgre
+#   namespace: postgre
+# spec:
+#   httpRoute:
+#     match:
+#       prefix: "/"
+#       hostname:
+#         exact: postgre.skyscaledev.com
+#     action:
+#       target:
+#         virtualService:
+#           virtualServiceRef:
+#             name: postgre
 

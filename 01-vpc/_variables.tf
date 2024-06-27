@@ -22,15 +22,11 @@ variable "ENV_APP_GL_NAMESPACE" {
 variable "ENV_APP_GL_AWS_AZS" {
   description = "The AWS azs your resources will be deployed"
 }
-
 variable "ENV_APP_GL_VPC_ENABLE_NAT_GATEWAY" {
   description = "Flag to enable NAT GATEWAY"
 }
 variable "ENV_APP_GL_VPC_SINGLE_NAT_GATEWAY" {
   description = "Flag for single NAT GATEWAY"
-}
-variable "ENV_APP_GL_VPC_CREATE" {
-  description = "Flag to create VPC or not"
 }
 variable "ENV_APP_GL_VPC_CIDR" {
   description = "The VPC cidr block"
