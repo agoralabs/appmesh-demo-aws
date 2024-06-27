@@ -1,13 +1,65 @@
-# AWS App Mesh Demo Platform with Terraform
+# Building a Service Mesh Demo Platform with Terraform in AWS Cloud
 
-The purpose of this repository is to showwase the capabilities of service mesh concept on Amazon Web Services Cloud (AWS) with Terraform.
+In the ever-evolving landscape of modern applications and cloud native architectures, the need for efficient, scalable, and secure communication between services is paramount.
+If you still have a doubt for your own organization, just look at your organization and if you are deploying more and more services and observing thoses services is challenging, for sure your organization definitely need a service Mesh.
+
+![Microservices Before and After](/images/00_1_servicemesh_before_after_1.png)
+
+Our purpose is to showcase the capabilities of service mesh concept on Amazon Web Services Cloud (AWS) with Terraform. But before diving into terraform code, let's explore some core knowledge to better understanging of the service Mesh interesting concept.
+
+## Why an organization needs a service mesh?
+
+In modern application architecture, you can build applications as a collection of small, independently deployable microservices. Different teams may build individual microservices and choose their coding languages and tools. However, the microservices must communicate for the application code to work correctly.
+
+Application performance depends on the speed and resiliency of communication between services. Developers must monitor and optimize the application across services, but it’s hard to gain visibility due to the system's distributed nature. As applications scale, it becomes even more complex to manage communications.
+
+There are two main drivers to service mesh adoption :
+
+- **Service-level observability** : As more workloads and services are deployed, developers find it challenging to understand how everything works together. For example, service teams want to know what their downstream and upstream dependencies are. They want greater visibility into how services and workloads communicate at the application layer.
+
+- **Service-level control** : Administrators want to control which services talk to one another and what actions they perform. They want fine-grained control and governance over the behavior, policies, and interactions of services within a microservices architecture. Enforcing security policies is essential for regulatory compliance.
+
+Those drivers leeds to a Service Mesh Architecture as a response. In facts, a service mesh provides a centralized, dedicated infrastructure layer that handles the intricacies of service-to-service communication within a distributed application.
+
+## What are the benefits of a service mesh?
+
+- **Service discovery** : Service meshes provide automated service discovery, which reduces the operational load of managing service endpoints.
+- **Load balancing** : Service meshes use various algorithms—such to distribute requests across multiple service instances intelligently.
+- **Traffic management** : Service meshes offer advanced traffic management features, which provide fine-grained control over request routing and traffic behavior. 
+
+## How does a service mesh work?
+
+A service mesh removes the logic governing service-to-service communication from individual services and abstracts communication to its own infrastructure layer. It uses several network proxies to route and track communication between services.
+
+A proxy acts as an intermediary gateway between your organization’s network and the microservice. All traffic to and from the service is routed through the proxy server. Individual proxies are sometimes called *sidecars*, because they run separately but are logically next to each service. 
+
+![Service Mesh works](/images/00_2_how_service_mesh_works_1.png)
+
+# Let's dive into our demo Architeture solution
+
+We need a Service Mesh demo platform deployed on Amazon Web Services Cloud (AWS) to showcase the capabilities of service mesh concept.
+A service mesh is an infrastructure layer dedicated to managing and securing communications between microservices within a distributed architecture. 
+Essentially, it is a network of interconnected microservices that communicate through sidecar proxies deployed alongside each service. 
+
 
 ## Prerequisites
 
-Be sure you have installed the following tools : 
+First of all you need an AWS Route 53 domain, the one we will use here is skyscaledev.com.
+
+Be also sure you have installed the following tools installed : 
 
 - Terraform
 - AWS CLI
+- Kubectl
+- eks-node-viewer
+- Postman
+
+
+The following products are also used :
+
+- Docker
+- Keycloak
+- PostgreSQL
 
 ## Solution Architecture
 
@@ -23,18 +75,12 @@ The following AWS Services are used :
 - AWS CloudMap
 - AWS App Mesh
 
-The following products are also used :
 
-- Docker
-- Keycloak
-- PostgreSQL
-- Postman
+![Solution Architecture App Mesh](/images/solutions-APPMESH.png)
 
-![Solution Architecture App Mesh](/images/solutions-APPMESH.png){width=200px}
+## App Mesh demo infrastructure resources creation step by step
 
-## Create infrastructure resources step by step
-
-For each step, just cd inside the folder and hit the following commands :
+For each step, you can just cd inside the folder and hit the well know **terraform** commands :
 
 ```
 terraform init
@@ -42,21 +88,18 @@ terraform apply
 
 ```
 
-But I recommend you the provided shell scripts apply.sh and destroy.sh.
+But I recommend you the provided shell script **./apply.sh**.
 
-To create the infrastructure elements use apply.sh : 
+To create the infrastructure elements just cd inside the folder and use apply.sh : 
 
 ```
+$ cd $WORKING_FOLDER
 $ ./apply.sh
 
 ```
 
-To destroy the infrastructure elements use destroy.sh : 
+Where WORKING_FOLDER is the folder containing terraform .tf files.
 
-```
-$ ./destroy.sh
-
-```
 
 ### Step 1 : Create a VPC 
 
@@ -69,9 +112,45 @@ $ ./destroy.sh
 Apply complete! Resources: 19 added, 0 changed, 0 destroyed.
 ```
 
+- The main terraform section used here is the following :
+
+```
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+  name                             = "${local.vpc_name}"
+  cidr                             = var.ENV_APP_GL_VPC_CIDR
+  azs                              = split(",", var.ENV_APP_GL_AWS_AZS)
+  public_subnets                   = ["${var.ENV_APP_GL_VPC_CIDR_SUBNET1}","${var.ENV_APP_GL_VPC_CIDR_SUBNET2}"]
+  private_subnets                  = local.private_subnets_cidrs
+  enable_nat_gateway               = local.enable_nat_gateway
+  single_nat_gateway               = local.single_nat_gateway
+  public_subnet_names              = local.public_subnets_names
+  private_subnet_names             = local.private_subnets_names
+  map_public_ip_on_launch          = true
+  enable_dns_support               = true
+  enable_dns_hostnames             = true
+  
+  private_subnet_tags = {
+    "kubernetes.io/role/internal-elb" = 1
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
+  }
+
+  public_subnet_tags = {
+    "kubernetes.io/role/elb" = 1 
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
+  }
+  ...
+}
+```
+
+The terraform module **terraform-aws-modules/vpc/aws** is used here to create :
+- a VPC with 2 public subnets and 2 private subnets.
+- 2 NAT Gateways for external traffic
+
+
 And if you take a look at the AWS VPC Service Web Console, you should see this :
 
-![App Mesh VPC](/images/01_vpc_console_1.png){width=200px}
+![App Mesh VPC](/images/01_vpc_console_1.png)
 
 
 ### Step 2 : Create a Kubernetes EKS cluster
@@ -83,9 +162,58 @@ And if you take a look at the AWS VPC Service Web Console, you should see this :
 Apply complete! Resources: 60 added, 0 changed, 0 destroyed.
 ```
 
+- The main terraform section used here is the following :
+
+```
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  cluster_name    = local.eks_cluster_name
+  cluster_version = var.cluster_version
+  enable_irsa     = true
+  vpc_id                         = var.global_vpc_id
+  subnet_ids                     = local.subnet_ids
+  cluster_endpoint_public_access = true
+  cluster_enabled_log_types = []
+  enable_cluster_creator_admin_permissions = true
+
+  eks_managed_node_group_defaults = {
+    ami_type = "AL2_x86_64"
+  }
+
+  eks_managed_node_groups = {
+    one = {
+      name = "${local.eks_cluster_name}-n1"
+
+      instance_types = ["${var.node_group_instance_type}"]
+
+      min_size     = var.node_group_min_size
+      max_size     = var.node_group_max_size
+      desired_size = var.node_group_desired_size
+      subnet_ids = [local.subnet_ids[0]]
+      iam_role_additional_policies = {
+        AmazonEC2FullAccess = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        AmazonEBSCSIDriverPolicy = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+      }
+
+      labels = {
+        "karpenter.sh/disruption" = "NoSchedule"
+      }
+    }
+
+  }
+...
+}
+```
+
+The terraform module **terraform-aws-modules/eks/aws** is used here to create :
+- an Amazon EKS Kubernetes cluster with 2 Amazon EC2 nodes.
+- Additional policies with permissions to manage EBS volumes and EC2 instances
+- Labels are also added to keep thoses nodes out of control of Karpenter nodes scheduler
+
+
 And if you take a look at the Amazon EKS Web Console, you should see this :
 
-![App Mesh EKS cluster](/images/02_k8scluster_console_1.png){width=200px}
+![App Mesh EKS cluster](/images/02_k8scluster_console_1.png)
 
 You should also see the two nodes created for this EKS Cluster if you use the EKS Node viewer tool : 
 
@@ -93,7 +221,7 @@ You should also see the two nodes created for this EKS Cluster if you use the EK
 $ eks-node-viewer
 ```
 
-![App Mesh EKS cluster nodes](/images/02_k8scluster_node_viewer_1.png){width=200px}
+![App Mesh EKS cluster nodes](/images/02_k8scluster_node_viewer_1.png)
 
 ### Step 3 : Create a Karpenter Kubernetes cluster nodes manager (Optional)
 
@@ -102,6 +230,55 @@ $ eks-node-viewer
 
 ```
 Apply complete! Resources: 20 added, 0 changed, 0 destroyed.
+```
+
+- The most important terraform section used here is the following :
+
+```
+resource "kubectl_manifest" "karpenter_node_pool" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1beta1
+    kind: NodePool
+    metadata:
+      name: default
+    spec:
+      disruption:
+        consolidationPolicy: ${var.consolidation_policy}
+        expireAfter: ${var.expire_after}
+      limits:
+        cpu: "${var.cpu_limits}"
+        memory: "${var.mem_limits}"
+      template:
+        metadata:
+          labels:
+            #cluster-name: ${local.cluster_name}
+            type : karpenter
+        spec:
+          nodeClassRef:
+            name: default
+          requirements:
+            - key: "karpenter.k8s.aws/instance-category"
+              operator: In
+              values: ${local.instance_category}
+            - key: kubernetes.io/arch
+              operator: In
+              values: ${local.architecture}
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values: ${local.capacity_type}
+            - key: kubernetes.io/os
+              operator: In
+              values: ${local.os}
+            - key: node.kubernetes.io/instance-type
+              operator: In
+              values: ${local.instance_type}
+
+  YAML
+
+  depends_on = [
+    kubectl_manifest.karpenter_node_class
+  ]
+}
 ```
 
 - Verify that the Karpenter Custom Resources Definitions (CRD) are added in the Kubernetes cluster :
@@ -136,7 +313,7 @@ With the EKS Node viewer tool, take a look at the nodes :
 $ eks-node-viewer
 ```
 
-![App Mesh EKS cluster Karpenter nodes](/images/03_karpenter_node_viewer_2.png){width=200px}
+![App Mesh EKS cluster Karpenter nodes](/images/03_karpenter_node_viewer_2.png)
 
 
 ### Step 4 : Create AppMesh Controller and AppMesh Gateway
@@ -150,9 +327,78 @@ You should also see the following :
 Apply complete! Resources: 25 added, 0 changed, 0 destroyed.
 ```
 
+- The most important section of the terraform script is the following :
+
+```
+resource "kubectl_manifest" "mesh" {
+    for_each  = data.kubectl_file_documents.mesh.manifests
+    yaml_body = each.value
+
+    depends_on = [ 
+      helm_release.appmesh_controller
+    ]
+}
+
+resource "kubectl_manifest" "virtual_gateway" {
+    for_each  = data.kubectl_file_documents.virtual_gateway.manifests
+    yaml_body = each.value
+
+    depends_on = [ 
+      helm_release.appmesh_gateway
+    ]
+}
+```
+
+Those instructions are used to apply the following manifests :
+
+```
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: Mesh
+metadata:
+  name: k8s-mesh-staging
+spec:
+  egressFilter:
+    type: DROP_ALL
+  namespaceSelector:
+    matchLabels:
+        mesh: k8s-mesh-staging
+  tracing:
+    provider:
+      xray:
+        daemonEndpoint: 127.0.0.1:2000
+...
+```
+
+```
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualGateway
+metadata:
+  name: appmesh-gateway
+  namespace: gateway
+spec:
+  namespaceSelector:
+    matchLabels:
+      mesh: k8s-mesh-staging
+      appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: appmesh-gateway
+  listeners:
+    - portMapping:
+        port: 8088
+        protocol: http
+  logging:
+    accessLog:
+      file:
+        path: "/dev/stdout"
+
+```
+
 And if you take a look at the AWS App Mesh Web Console, you should see this :
 
-![App Mesh](/images/04_mesh_1.png){width=200px}
+![App Mesh](/images/04_mesh_1.png)
 
 The script should also create the following resources : 
 - Pods for App Mesh Controller
@@ -184,7 +430,7 @@ NAME              TYPE           CLUSTER-IP     EXTERNAL-IP                     
 appmesh-gateway   LoadBalancer   172.20.82.97   a7d0b077d231e4713a90dbb62382168b-15706dbc33b16c0c.elb.us-west-2.amazonaws.com   80:30205/TCP   26m
 ```
 
-![App Mesh Gateway Network Load Balancer](/images/04_mesh_gateway_nlb_1.png){width=200px}
+![App Mesh Gateway Network Load Balancer](/images/04_mesh_gateway_nlb_1.png)
 
 
 ### Step 5 : Create an HTTP API Gateway
@@ -212,9 +458,43 @@ module.apigw.aws_apigatewayv2_route.options_route: Creation complete after 0s [i
 Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
 ```
 
+- The most important sections in the terraform script are the following : 
+
+```
+resource "aws_apigatewayv2_integration" "api_gw" {
+  api_id           = aws_apigatewayv2_api.api_gw.id
+  integration_type = "HTTP_PROXY"
+  connection_id    = aws_apigatewayv2_vpc_link.api_gw.id
+  connection_type  = "VPC_LINK"
+  description      = "Integration with Network Load Balancer"
+  integration_method = "ANY"
+  integration_uri  = "${data.aws_lb_listener.nlb.arn}"
+  payload_format_version = "1.0"
+}
+
+resource "aws_apigatewayv2_route" "api_gw" {
+  api_id    = aws_apigatewayv2_api.api_gw.id
+  route_key = "ANY /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_gw.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "options_route" {
+  api_id    = aws_apigatewayv2_api.api_gw.id
+  route_key = "OPTIONS /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_gw.id}"
+  authorization_type = "NONE"
+}
+```
+
+The terraform resource **aws_apigatewayv2_integration and aws_apigatewayv2_route** are used here to create :
+  - an API Gateway integrated with the network load balancer created in the previous step
+  - a **"ANY /{proxy+}"** route to forward requests to the Network Load Balancer, this route will later be protected by a Lambda Authorizer
+  - a **"OPTIONS /{proxy+}"** route with no authorization. Since many browsers uses an HTTP OPTIONS request before any others requests.
+
 - Verify that the HTTP API Gateway created is integrated with the Network Load Balancer created in the previous step.
 
-![API Gateway](/images/05_apigateway_integration_with_nlb.png){width=200px}
+![API Gateway](/images/05_apigateway_integration_with_nlb.png)
 
 ### Step 6 : Create an EBS volume and install the CSI Driver on kubernetes
 
@@ -242,20 +522,65 @@ module.ebscsi.aws_eks_addon.this: Creation complete after 26s [id=k8s-mesh-stagi
 Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
 ```
 
+- The most important sections of the Terraform script are : 
+
+```
+resource "aws_eks_addon" "this" {
+
+  cluster_name = data.aws_eks_cluster.eks.name
+  addon_name   = "aws-ebs-csi-driver"
+
+  addon_version               = data.aws_eks_addon_version.this.version
+  configuration_values        = null
+  preserve                    = true
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+  service_account_role_arn    = null
+
+  depends_on = [
+    aws_iam_role.ebs_csi_driver_role
+  ]
+
+}
+
+resource "aws_ebs_volume" "aws_volume" {
+  availability_zone = "${var.aws_az}"
+  size              = 20
+  tags = {
+    Name = "${var.eks_cluster_name}-ebs"
+  }
+  depends_on = [
+    aws_iam_role.ebs_csi_driver_role
+  ]
+}
+
+```
+
 - In the EKS console, check the added Amazon EBS CSI Driver addon
 
-![EBS CSI Volume Addon](/images/06_ebscsiaddon_1.png){width=200px}
+![EBS CSI Volume Addon](/images/06_ebscsiaddon_1.png)
 
 
 - In the EC2 console, check the created EBS volume
 
-![EBS CSI Volume](/images/06_ebscsivolume_1.png){width=200px}
+![EBS CSI Volume](/images/06_ebscsivolume_1.png)
 
 
 ### Step 7 : Create a Persistent Volume
 
 - Go to 07-k8smanifest-pvolume directory.
 - Update the manifest in *files/7-ebs-csi-driver-pv.yaml* with the correct volume ID
+
+- The most important section of the Terraform script is the following :
+
+```
+resource "kubectl_manifest" "resource" {
+    for_each  = data.kubectl_file_documents.docs.manifests
+    yaml_body = each.value
+}
+```
+
+It is used to create a PV using the following manifest : 
 
 ```
 ---
@@ -318,7 +643,7 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 - Verify that the created DNS Record value is the API Gateway Endpoint.
 
-![DNS Record Keycloak](/images/08_dns_record_keycloak_1.png){width=200px}
+![DNS Record Keycloak](/images/08_dns_record_keycloak_1.png)
 
 ### Step 9 : Deploy a Postgre database for Keycloak inside the App Mesh
 
@@ -341,7 +666,7 @@ postgre-58fbbd958d-w8zhh   3/3     Running   0          10m
 
 - Verify the Discovered service in AWS Cloud Map Service Console
 
-![Postgre Keycloak Discovered service](/images/09_postgre_cloud_map_1.png){width=200px}
+![Postgre Keycloak Discovered service](/images/09_postgre_cloud_map_1.png)
 
 ### Step 10 : Deploy Keycloak inside the App Mesh
 
@@ -364,11 +689,11 @@ keycloak-demo1-prod-7857d7d59d-7qbfw   3/3     Running   0          11m
 
 - Verify the Discovered service in AWS Cloud Map Service Console
 
-![Keycloak Discovered service](/images/10_keycloak_cloud_map_1.png){width=200px}
+![Keycloak Discovered service](/images/10_keycloak_cloud_map_1.png)
 
 - Verify the deployed Keycloak instance by opening your browser
 
-![Keycloak login](/images/10_keycloak_loginpage.png){width=200px}
+![Keycloak login](/images/10_keycloak_loginpage.png)
 
 ### Step 11 : Create a realm in Keycloak
 
@@ -383,7 +708,7 @@ Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
 - Verify the realm in Keycloak admin console : 
 
-![Keycloak realm](/images/11_keycloak_realm_1.png){width=200px}
+![Keycloak realm](/images/11_keycloak_realm_1.png)
 
 ### Step 12 : Create a Cognito user pool to federate Keycloak identities
 
@@ -399,11 +724,11 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 - Verify the created Cognito User Pool in Amazon Cognito console : 
 
-![Cognito Keycloak User Pool](/images/12_cognito_keycloak_userpool_1.png){width=200px}
+![Cognito Keycloak User Pool](/images/12_cognito_keycloak_userpool_1.png)
 
 - Verify that the Cognito User Pool federates the previous Keycloak Identity provider : 
 
-![Cognito Federated Keycloak User Pool](/images/12_cognito_federated_keycloak_1.png){width=200px}
+![Cognito Federated Keycloak User Pool](/images/12_cognito_federated_keycloak_1.png)
 
 ### Step 13 : Create a Cognito user pool client to integrate a Single Page Application (OAuth2 implicit flow)
 
@@ -419,11 +744,11 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 
 - Verify the created Cognito User Pool client : 
 
-![Cognito User Pool client](/images/13_cognito_client_spa_1.png){width=200px}
+![Cognito User Pool client](/images/13_cognito_client_spa_1.png)
 
 - Verify the client OAuth grant types (flows) : 
 
-![Cognito client OAuth grant types](/images/13_cognito_client_spa_oauth_flows_1.png){width=200px}
+![Cognito client OAuth grant types](/images/13_cognito_client_spa_oauth_flows_1.png)
 
 
 ### Step 14 : Create a Lambda Authorizer and attach it to the API Gateway
@@ -448,13 +773,13 @@ Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 
 - Verify the API Gateway and the attached Lambda Authorizer
 
-![API Gateway and the attached Lambda Authorizer](/images/14_api_gateway_lambda_1.png){width=200px}
+![API Gateway and the attached Lambda Authorizer](/images/14_api_gateway_lambda_1.png)
 
 - Verify the Lambda Authorizer
 
-![Lambda Authorizer](/images/14_lambda_authorizer_1.png){width=200px}
+![Lambda Authorizer](/images/14_lambda_authorizer_1.png)
 
-![Lambda Authorizer Environment variables](/images/14_lambda_authorizer_env_vars_1.png){width=200px}
+![Lambda Authorizer Environment variables](/images/14_lambda_authorizer_env_vars_1.png)
 
 
 ### Step 15 : Create a Lambda@Edge function to redirect to Cognito if unauthorized access
@@ -473,7 +798,7 @@ module.lambda_edge.aws_lambda_function.lambda_edge: Creation complete after 13s 
 Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 ```
 
-![Lambda at Edge](/images/15_lambda_at_edge_1.png){width=200px}
+![Lambda at Edge](/images/15_lambda_at_edge_1.png)
 
 ### Step 16 : Create a Cloudfront distribution with the API Gateway as origin and the Lambda@Edge attached in the View-Request
 
@@ -487,7 +812,7 @@ module.cloudfront.aws_cloudfront_distribution.distribution: Creation complete af
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 ```
 
-![Cloudfront Lambda at Edge](/images/16_cloudfront_distribution_at_edge_1.png){width=200px}
+![Cloudfront Lambda at Edge](/images/16_cloudfront_distribution_at_edge_1.png)
 
 
 ### Step 17 : Create a DNS record for the Cloudfront distribution
@@ -565,11 +890,11 @@ service-spa-7b4884cd4f-pzpjl   3/3     Running   0          2m49s
 
 - Navigate to https://front-service-spa.example.com/
 
-![Cognito Redirection](/images/19_cognito_keycloak_redirection_1.png){width=200px}
+![Cognito Redirection](/images/19_cognito_keycloak_redirection_1.png)
 
-![Cognito Keycloak login](/images/19_cognito_keycloak_login_realm_1.png){width=200px}
+![Cognito Keycloak login](/images/19_cognito_keycloak_login_realm_1.png)
 
-![Keycloak Redirection to SPA](/images/19_cognito_keycloak_redirection_spa_1.png){width=200px}
+![Keycloak Redirection to SPA](/images/19_cognito_keycloak_redirection_spa_1.png)
 
 
 ### Step 20 : Deploy a Postgre database for the API inside the App Mesh
@@ -622,11 +947,11 @@ module.cogpoolclient.aws_cognito_user_pool_client.user_pool_client: Creation com
 Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 ```
 
-![Cognito Redirection](/images/23_postman_use_client_credentials_1.png){width=200px}
+![Cognito Redirection](/images/23_postman_use_client_credentials_1.png)
 
-![Cognito Redirection](/images/23_postman_use_client_credentials_create_1.png){width=200px}
+![Cognito Redirection](/images/23_postman_use_client_credentials_create_1.png)
 
-![Cognito Redirection](/images/23_spa_call_api_1.png){width=200px}
+![Cognito Redirection](/images/23_spa_call_api_1.png)
 
 ## Clean up
 
