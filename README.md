@@ -1,7 +1,7 @@
 # Building a Service Mesh Demo Platform with Terraform in AWS Cloud
 
 In the ever-evolving landscape of modern applications and cloud native architectures, the need for efficient, scalable, and secure communication between services is paramount.
-If you still have a doubt for your own organization, just look at your organization and if you are deploying more and more services and observing thoses services is challenging, for sure your organization definitely need a service Mesh.
+If you still have a doubt for your own organization, just take a look at your workloads and if you are deploying more and more services and observing thoses services is a bit challenging, for sure your organization definitely need a service Mesh.
 
 ![Microservices Before and After](/images/00_1_servicemesh_before_after_1.png)
 
@@ -61,6 +61,44 @@ The following products are also used :
 - Keycloak
 - PostgreSQL
 
+Then clone the Git repository containing the Terraform scripts :
+
+```
+git clone https://github.com/agoralabs/appmesh-demo-aws.git
+```
+
+You should have the following directory structure :
+
+```
+.
+├── 01-vpc
+├── 02-k8scluster
+├── 03-karpenter
+├── 04-mesh
+├── 05-apigateway
+├── 06-csivolume
+├── 07-k8smanifest-pvolume
+├── 08-meshexposer-keycloak
+├── 09-meshservice-postgre-keycloak
+├── 10-meshservice-keycloak
+├── 11-kurler-keycloak-realm
+├── 12-fedusers
+├── 13-fedclient-spa
+├── 14-apiauthorizer
+├── 15-atedge
+├── 16-apigwfront
+├── 17-meshcfexposer-spa
+├── 18-meshexposer-spa
+├── 19-meshservice-spa
+├── 20-meshservice-postgre-api
+├── 21-meshexposer-api
+├── 22-meshservice-api
+├── 23-fedclient-api
+├── images
+├── modules
+└── README.md
+```
+
 ## Solution Architecture
 
 This is the Solution Architecture we are going to deploy.
@@ -85,7 +123,6 @@ For each step, you can just cd inside the folder and hit the well know **terrafo
 ```
 terraform init
 terraform apply
-
 ```
 
 But I recommend you the provided shell script **./apply.sh**.
@@ -95,7 +132,6 @@ To create the infrastructure elements just cd inside the folder and use apply.sh
 ```
 $ cd $WORKING_FOLDER
 $ ./apply.sh
-
 ```
 
 Where WORKING_FOLDER is the folder containing terraform .tf files.
@@ -103,7 +139,7 @@ Where WORKING_FOLDER is the folder containing terraform .tf files.
 
 ### Step 1 : Create a VPC 
 
-- Go to 01-vpc directory.
+- cd to **01-vpc** folder.
 - Run apply.sh script : a vpn named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
 
 
@@ -155,7 +191,7 @@ And if you take a look at the AWS VPC Service Web Console, you should see this :
 
 ### Step 2 : Create a Kubernetes EKS cluster
 
-- Go to 02-k8scluster directory.
+- cd to **02-k8scluster** folder.
 - Run apply.sh script : an EKS cluster named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
 
 ```
@@ -223,9 +259,11 @@ $ eks-node-viewer
 
 ![App Mesh EKS cluster nodes](/images/02_k8scluster_node_viewer_1.png)
 
-### Step 3 : Create a Karpenter Kubernetes cluster nodes manager (Optional)
+### Step 3 : Create a Karpenter Kubernetes cluster nodes manager (OPTIONAL SECTION)
 
-- Go to 03-karpenter directory.
+**YOU CAN SKIP THIS SECTION**
+
+- cd to **03-karpenter** folder.
 - Run apply.sh script : Karpenter should be installed in your cluster and you should have the following result :
 
 ```
@@ -318,7 +356,7 @@ $ eks-node-viewer
 
 ### Step 4 : Create AppMesh Controller and AppMesh Gateway
 
-- Go to 04-mesh directory.
+- cd to **04-mesh** folder.
 - Run apply.sh script : a Mesh named **k8s-mesh-staging** should be created.
 
 You should also see the following : 
@@ -435,7 +473,7 @@ appmesh-gateway   LoadBalancer   172.20.82.97   a7d0b077d231e4713a90dbb62382168b
 
 ### Step 5 : Create an HTTP API Gateway
 
-- Go to 05-apigateway directory.
+- cd to **05-apigateway** folder.
 - Run apply.sh script : an API Gateway named **k8s-mesh-staging-api-gw** should be created.
 
 ```
@@ -500,7 +538,7 @@ The terraform resource **aws_apigatewayv2_integration and aws_apigatewayv2_route
 
 We need a persistent volume in the Kubernetes cluster, this volume will be useful to persist datas when needed.
 
-- Go to 06-csivolume directory.
+- cd to **06-csivolume** folder.
 - Run apply.sh script : an EBS Volume named **terraform-ebs-volume** should be created and the EBS CSI Driver should be installed in your Kubernetes cluster.
 
 ```
@@ -568,7 +606,7 @@ resource "aws_ebs_volume" "aws_volume" {
 
 ### Step 7 : Create a Persistent Volume
 
-- Go to 07-k8smanifest-pvolume directory.
+- cd to **07-k8smanifest-pvolume** folder.
 - Update the manifest in *files/7-ebs-csi-driver-pv.yaml* with the correct volume ID
 
 - The most important section of the Terraform script is the following :
@@ -625,7 +663,7 @@ k8s-mesh-staging-ebs-pv   20Gi       RWO            Retain           Available  
 Keycloak will be used as the Federated Identity Provider in this demo.
 So Let's start by creating a user friendly DNS record for Keycloak. 
 
-- Go to 08-meshexposer-keycloak directory.
+- cd to **08-meshexposer-keycloak** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone.
 - Run apply.sh script : a DNS record **keycloak-demo1-prod.example.com** should be created in your hosted zone.
 
@@ -647,7 +685,7 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 ### Step 9 : Deploy a Postgre database for Keycloak inside the App Mesh
 
-- Go to 09-meshservice-postgre-keycloak directory.
+- cd to **09-meshservice-postgre-keycloak** folder.
 - Run apply.sh script : a Postgre SQL pod should be created.
 
 ```
@@ -670,7 +708,7 @@ postgre-58fbbd958d-w8zhh   3/3     Running   0          10m
 
 ### Step 10 : Deploy Keycloak inside the App Mesh
 
-- Go to 10-meshservice-keycloak directory.
+- cd to **10-meshservice-keycloak** folder.
 - Run apply.sh script : a Keycloak pod should be created.
 
 ```
@@ -697,7 +735,7 @@ keycloak-demo1-prod-7857d7d59d-7qbfw   3/3     Running   0          11m
 
 ### Step 11 : Create a realm in Keycloak
 
-- Go to 11-kurler-keycloak-realm directory.
+- cd to **11-kurler-keycloak-realm** folder.
 - Run apply.sh script : a Keycloak Realm should be created.
 
 ```
@@ -712,7 +750,7 @@ Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
 ### Step 12 : Create a Cognito user pool to federate Keycloak identities
 
-- Go to 12-fedusers directory.
+- cd to **12-fedusers** folder.
 - Run apply.sh script : a Cognito User Pool should be created.
 
 ```
@@ -732,7 +770,7 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 ### Step 13 : Create a Cognito user pool client to integrate a Single Page Application (OAuth2 implicit flow)
 
-- Go to 13-fedclient-spa directory.
+- cd to **13-fedclient-spa** folder.
 - Run apply.sh script : a Cognito User Pool Client should be created.
 
 ```
@@ -753,7 +791,7 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 
 ### Step 14 : Create a Lambda Authorizer and attach it to the API Gateway
 
-- Go to 14-apiauthorizer directory.
+- cd to **14-apiauthorizer** folder.
 - Update the **JWKS_ENDPOINT** value in **files/14_authorizer_real_token_env_vars.json** with the **Token signing key URL** of the Cognito User Pool.
 - Run apply.sh script : a Lambda function named **authorizer** should be created and also attached to the API Gateway.
 
@@ -784,7 +822,7 @@ Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 
 ### Step 15 : Create a Lambda@Edge function to redirect to Cognito if unauthorized access
 
-- Go to 15-atedge directory.
+- cd to **15-atedge** folder.
 - Update the file **files/14_authorizer_real_token_env_vars.json** 
   - **JWKS_ENDPOINT** with the **Token signing key URL** of the Cognito User Pool.
   - **CLIENT_ID** with Client ID of the Cognito User Pool client created for SPA.
@@ -802,7 +840,7 @@ Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 
 ### Step 16 : Create a Cloudfront distribution with the API Gateway as origin and the Lambda@Edge attached in the View-Request
 
-- Go to 16-apigwfront directory.
+- cd to **16-apigwfront** folder.
 - Run apply.sh script : a Cloudfront distribution with the API Gateway as origin should be created and the Lambda@Edge attached in the View-Request.
 
 ```
@@ -817,7 +855,7 @@ Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
 ### Step 17 : Create a DNS record for the Cloudfront distribution
 
-- Go to 17-meshcfexposer-spa directory.
+- cd to **17-meshcfexposer-spa** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone and the Cloudfront Distribution ID.
 - Run apply.sh script : a DNS record **front-service-spa.example.com** should be created in your hosted zone.
 
@@ -830,7 +868,7 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 
 ### Step 18 : Create a DNS record for the SPA
 
-- Go to 18-meshexposer-spa directory.
+- cd to **18-meshexposer-spa** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone.
 - Run apply.sh script : a DNS record **service-spa.example.com** should be created in your hosted zone.
 
@@ -851,7 +889,7 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 ### Step 19 : Deploy the SPA inside the App Mesh
 
-- Go to 19-meshservice-spa directory.
+- cd to **19-meshservice-spa** folder.
 - In the file **files/19-appmesh-service-spa.yaml**, update ENV_APP_GL_USER_POOL_ID and ENV_APP_GL_USER_POOL_CLIENT_ID in the *service-spa* ConfigMap
 
 ```
@@ -899,7 +937,7 @@ service-spa-7b4884cd4f-pzpjl   3/3     Running   0          2m49s
 
 ### Step 20 : Deploy a Postgre database for the API inside the App Mesh
 
-- Go to 20-meshservice-postgre-api directory.
+- cd to **20-meshservice-postgre-api** folder.
 - Run apply.sh script : a Postgre SQL pod should be created.
 
 ```
@@ -918,7 +956,7 @@ postgreapi-754bd8b77d-7lhv2   3/3     Running   0          49s
 
 ### Step 21 : Create a DNS record for the API
 
-- Go to 21-meshexposer-api directory.
+- Go to **21-meshexposer-api** directory.
 
 ```
 module.exposer.aws_route53_record.dnsapi: Creation complete after 50s [id=Z0017173R6DN4LL9QIY3_service-api_CNAME]
@@ -928,7 +966,7 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 ### Step 22 : Deploy the API inside the App Mesh
 
-- Go to 22-meshservice-api directory.
+- cd to **22-meshservice-api** folder.
 
 ```
 module.appmeshservice.kubectl_manifest.resource["/apis/apps/v1/namespaces/service-api/deployments/service-api"]: Creation complete after 1m20s [id=/apis/apps/v1/namespaces/service-api/deployments/service-api]
@@ -938,7 +976,7 @@ Apply complete! Resources: 15 added, 0 changed, 0 destroyed.
 
 ### Step 23 : Create a Cognito user pool client to integrate an API (OAuth2 client_credentials flow)
 
-- Go to 23-fedclient-api directory.
+- cd to **23-fedclient-api** folder.
 - Run apply.sh script : a userpool client named **springbootapi** should be created.
 
 ```
@@ -955,8 +993,8 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 
 ## Clean up
 
-- Go in each folder,
-- Run destroy.sh shell script.
+- cd in each folder,
+- Run **destroy.sh** shell script.
 
 ## Conclusion
 
