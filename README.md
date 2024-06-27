@@ -148,7 +148,8 @@ Where WORKING_FOLDER is the folder containing terraform .tf files.
 Apply complete! Resources: 19 added, 0 changed, 0 destroyed.
 ```
 
-- The main terraform section used here is the following :
+> [!TIP]
+> The main terraform section used here is the following :
 
 ```
 module "vpc" {
@@ -198,7 +199,8 @@ And if you take a look at the AWS VPC Service Web Console, you should see this :
 Apply complete! Resources: 60 added, 0 changed, 0 destroyed.
 ```
 
-- The main terraform section used here is the following :
+> [!TIP]
+> The post important terraform section used here is the following :
 
 ```
 module "eks" {
@@ -368,7 +370,8 @@ You should also see the following :
 Apply complete! Resources: 25 added, 0 changed, 0 destroyed.
 ```
 
-- The most important section of the terraform script is the following :
+> [!TIP]
+> The most important section of the terraform script is the following :
 
 ```
 resource "kubectl_manifest" "mesh" {
@@ -499,7 +502,8 @@ module.apigw.aws_apigatewayv2_route.options_route: Creation complete after 0s [i
 Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
 ```
 
-- The most important sections in the terraform script are the following : 
+> [!TIP]
+> The most important sections in the terraform script are the following : 
 
 ```
 resource "aws_apigatewayv2_integration" "api_gw" {
@@ -563,7 +567,8 @@ module.ebscsi.aws_eks_addon.this: Creation complete after 26s [id=k8s-mesh-stagi
 Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
 ```
 
-- The most important sections of the Terraform script are : 
+> [!TIP]
+> The most important sections of the Terraform script are : 
 
 ```
 resource "aws_eks_addon" "this" {
@@ -612,7 +617,8 @@ resource "aws_ebs_volume" "aws_volume" {
 - cd to **07-k8smanifest-pvolume** folder.
 - Update the manifest in *files/7-ebs-csi-driver-pv.yaml* with the correct volume ID
 
-- The most important section of the Terraform script is the following :
+> [!TIP]
+> The most important section of the Terraform script is the following :
 
 ```
 resource "kubectl_manifest" "resource" {
