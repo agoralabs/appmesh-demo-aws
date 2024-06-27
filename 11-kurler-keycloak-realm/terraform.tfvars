@@ -1,0 +1,8 @@
+ENV_APP_GL_AWS_REGION="us-west-2"
+ENV_APP_GL_AWS_CRED_FILE_PATH="~/.aws/credentials"
+ENV_APP_GL_AWS_CRED_PROFILE="default"
+ENV_APP_GL_KAIAC_MODULE="kurler"
+ENV_APP_GL_NAMESPACE="k8s"
+ENV_APP_GL_NAME="mesh"
+ENV_APP_GL_STAGE="realm"
+ENV_APP_GL_INPUT_CONFIG_FILE="files/11_kurler_keycloak_realm_config.json"

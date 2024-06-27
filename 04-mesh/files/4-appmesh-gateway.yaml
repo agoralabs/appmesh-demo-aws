@@ -54,7 +54,8 @@ podAntiAffinity:
 # affinity: node/pod affinity (disable podAntiAffinity to use this)
 affinity: {}
 
-nodeSelector: {}
+nodeSelector:
+  type: karpenter
 
 tolerations: []
 

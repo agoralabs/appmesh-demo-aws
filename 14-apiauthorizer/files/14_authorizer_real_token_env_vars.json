@@ -1,5 +1,5 @@
 {
-  "JWKS_ENDPOINT": "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_Zzevn4wv0/.well-known/jwks.json",
+  "JWKS_ENDPOINT": "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_BPVSBRdNl/.well-known/jwks.json",
   "ALLOWED_HOSTS": "service-spa.skyscaledev.com,keycloak-demo1-prod.skyscaledev.com"
 
 }

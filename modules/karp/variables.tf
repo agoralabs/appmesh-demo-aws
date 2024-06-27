@@ -34,6 +34,10 @@ variable "cpu_limits" {
   description = "The Karepenter NodePool cpu limits eg. 10"
 }
 
+variable "mem_limits" {
+  description = "The Karepenter NodePool memory limits eg. 10Gi"
+}
+
 variable "consolidation_policy" {
   description = "The Karepenter NodePool consolidationPolicy eg. WhenEmpty"
 }
@@ -48,6 +52,10 @@ variable "expire_after" {
 
 variable "instance_category" {
   description = "The Karepenter NodePool instance-category eg. c, m, r"
+}
+
+variable "instance_type" {
+  description = "The Karepenter NodePool instance-type eg. c5.large, m5.large, r5.large"
 }
 
 variable "architecture" {

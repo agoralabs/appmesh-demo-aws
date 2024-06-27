@@ -74,11 +74,15 @@ resource "aws_iam_role" "ebs_csi_driver_role" {
   })
 }
 
+/*
 resource "aws_iam_role_policy_attachment" "attach_ebs_csi_driver_policy" {
   role       = aws_iam_role.ebs_csi_driver_role.name
-  policy_arn = aws_iam_policy.ebs_csi_driver_policy.arn
+  //policy_arn = aws_iam_policy.ebs_csi_driver_policy.arn
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
+*/
 
+/*
 provider "helm" {
   kubernetes {
     host                   = data.aws_eks_cluster.eks.endpoint
@@ -94,7 +98,7 @@ resource "helm_release" "ebs_cis" {
   chart            = "aws-ebs-csi-driver"
   namespace        = "kube-system"
   create_namespace = false
-  version          = "2.31.0"
+  version          = "2.32.0"
 
   values = [templatefile("${var.aws_ebs_csi_driver_default}", {})]
 
@@ -103,14 +107,44 @@ resource "helm_release" "ebs_cis" {
   ]
 }
 
+*/
+
+data "aws_eks_addon_version" "this" {
+  addon_name         = "aws-ebs-csi-driver"
+  kubernetes_version = data.aws_eks_cluster.eks.version
+  most_recent        = true
+}
+
+resource "aws_eks_addon" "this" {
+
+  cluster_name = data.aws_eks_cluster.eks.name
+  addon_name   = "aws-ebs-csi-driver"
+
+  addon_version               = data.aws_eks_addon_version.this.version
+  configuration_values        = null
+  preserve                    = true
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+  service_account_role_arn    = null
+
+  depends_on = [
+    aws_iam_role.ebs_csi_driver_role
+  ]
+
+}
+
+resource "aws_iam_role_policy_attachment" "attach_ebs_csi_driver_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  role       = aws_iam_role.ebs_csi_driver_role.name
+}
 
 resource "aws_ebs_volume" "aws_volume" {
-  availability_zone = "us-west-2a"
+  availability_zone = "${var.aws_az}"
   size              = 20
   tags = {
-    Name = "terraform-ebs-volume"
+    Name = "${var.eks_cluster_name}-ebs"
   }
   depends_on = [
-    helm_release.ebs_cis
+    aws_iam_role.ebs_csi_driver_role
   ]
 }

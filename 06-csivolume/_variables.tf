@@ -25,3 +25,6 @@ variable "ENV_APP_GL_CLUSTER_NAME" {
 variable "ENV_APP_GL_EBS_CSI_DRIVER_DEFAULTS" {
   description = "The EBS CSI Driver Helm defaults"
 }
+variable "ENV_APP_GL_AWS_AZ" {
+  description = "The AWS Availability Zone"
+}

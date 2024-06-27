@@ -22,6 +22,9 @@ variable "ENV_APP_GL_KAIAC_MODULE" {
 variable "ENV_APP_GL_CLUSTER_NAME" {
   description = "EKS Kubernetes cluster name"
 }
+variable "ENV_APP_GL_APPMESH_NAME" {
+  description = "The App Mesh name"
+}
 variable "ENV_APP_GL_APPMESH_SERVICE_NAME" {
   description = "The App Mesh service name to deploy"
 }

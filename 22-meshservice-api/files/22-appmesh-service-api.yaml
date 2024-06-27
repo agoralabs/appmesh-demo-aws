@@ -51,7 +51,7 @@ data:
         oauth2:
           resourceserver:
             jwt:
-              issuer-uri: https://cognito-idp.us-west-2.amazonaws.com/us-west-2_Zzevn4wv0
+              issuer-uri: https://cognito-idp.us-west-2.amazonaws.com/us-west-2_BPVSBRdNl
       jackson:
         property-naming-strategy: SNAKE_CASE
       flyway:

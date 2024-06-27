@@ -1,5 +1,3 @@
-#THIS FILE IS GENERATED !
-#DO NOT MODIFY
 terraform {
   required_providers {
     aws = {
@@ -8,13 +6,6 @@ terraform {
     }
   }
   
-  backend "s3" {
-    bucket = "agoralabs-iac-tf-state-bucket"
-    key    = "terraform-state"
-    region = "us-west-2"
-    shared_credentials_file = "~/.aws/credentials"
-    profile = "default"
-  }
 }
 
 provider "aws" {

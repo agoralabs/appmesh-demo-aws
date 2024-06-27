@@ -43,4 +43,3 @@ variable "ENV_APP_LA_CODE_DEPENDENCIES" {
 variable "ENV_APP_LA_ENV_VARS_FILE" {
   description = "The Lambda Authorizer env vars file"
 }
-

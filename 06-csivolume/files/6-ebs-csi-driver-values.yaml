@@ -237,7 +237,8 @@ controller:
   k8sTagClusterId:
   logLevel: 2
   userAgentExtra: "helm"
-  nodeSelector: {}
+  nodeSelector:
+    type: karpenter
   deploymentAnnotations: {}
   podAnnotations: {}
   podLabels: {}

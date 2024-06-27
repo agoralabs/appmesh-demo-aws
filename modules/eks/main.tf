@@ -10,6 +10,7 @@ locals {
     EnvironmentType = var.app_env
     Namespace = var.app_namespace
     Deployment = "${local.eks_cluster_name}"
+    "karpenter.sh/exclude" = "true"
   }
 
 }
@@ -54,6 +55,11 @@ module "eks" {
       iam_role_additional_policies = {
         AmazonEC2FullAccess = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
         additional          = aws_iam_policy.node_additional.arn
+        AmazonEBSCSIDriverPolicy = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+      }
+
+      labels = {
+        "karpenter.sh/disruption" = "NoSchedule"
       }
     }
 
@@ -69,6 +75,10 @@ module "eks" {
       iam_role_additional_policies = {
         AmazonEC2FullAccess = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
         additional          = aws_iam_policy.node_additional.arn
+      }
+
+      labels = {
+        "karpenter.sh/disruption" = "NoSchedule"
       }
     }
 
@@ -101,42 +111,4 @@ resource "aws_iam_policy" "node_additional" {
   tags = local.tags
 }
 
-resource "aws_ec2_tag" "prv_subnet_tags_1" {
-  for_each    = local.prv_subnet_ids_map
-  resource_id = each.value
-  key         = "kubernetes.io/role/internal-elb"
-  value       = "1"
-  depends_on = [
-    module.eks
-  ]
-}
 
-resource "aws_ec2_tag" "prv_subnet_tags_2" {
-  for_each    = local.prv_subnet_ids_map
-  resource_id = each.value
-  key         = "kubernetes.io/cluster/${local.eks_cluster_name}"
-  value       = "owned"
-  depends_on = [
-    module.eks
-  ]
-}
-
-resource "aws_ec2_tag" "pub_subnet_tags_1" {
-  for_each    = local.pub_subnet_ids_map
-  resource_id = each.value
-  key         = "kubernetes.io/role/elb"
-  value       = "1"
-  depends_on = [
-    module.eks
-  ]
-}
-
-resource "aws_ec2_tag" "pub_subnet_tags_2" {
-  for_each    = local.pub_subnet_ids_map
-  resource_id = each.value
-  key         = "kubernetes.io/cluster/${local.eks_cluster_name}"
-  value       = "owned"
-  depends_on = [
-    module.eks
-  ]
-}

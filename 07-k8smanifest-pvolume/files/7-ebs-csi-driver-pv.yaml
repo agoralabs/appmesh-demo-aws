@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: ebs-pv
+  name: k8s-mesh-staging-ebs-pv
 spec:
   capacity:
     storage: 20Gi
@@ -13,4 +13,4 @@ spec:
   storageClassName: "gp2"
   csi:
     driver: ebs.csi.aws.com
-    volumeHandle: "vol-037b4cf6aff355c83"
+    volumeHandle: "vol-01ae2bb82c2704d3f"

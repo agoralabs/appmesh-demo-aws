@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: appmesh-demo
+  labels:
+    app.kubernetes.io/created-by: appmesh-demo
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pauser
+  namespace: appmesh-demo
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: pauser
+  template:
+    metadata:
+      labels:
+        app: pauser
+    spec:
+      nodeSelector:
+        type: karpenter
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: pauser
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.2
+          resources:
+            requests:
+              memory: 60Mi

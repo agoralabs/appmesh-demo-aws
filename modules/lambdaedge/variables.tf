@@ -34,14 +34,6 @@ variable "lambda_edge_timeout" {
   description = "Lambda function timeout"
 }
 
-variable "oauth2_domain" {
-  description = "OAuth2 Domain"
-}
-
-variable "userpool_client_id" {
-  description = "User pool client id"
-}
-
 variable "env_vars_file" {
   description = "Env variables"
 }

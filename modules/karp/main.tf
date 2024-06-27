@@ -91,9 +91,38 @@ resource "aws_iam_role" "karpenter_node_role" {
     "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
     "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
-    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+    "arn:aws:iam::aws:policy/AmazonEC2FullAccess",
   ]
 
+}
+
+
+resource "aws_iam_policy" "node_additional" {
+  name        = "${local.cluster_name}-node-additional-kp"
+  description = "Node additional policy Kp"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ec2:Describe*",
+          "appmesh:*",
+          "servicediscovery:*",
+          "logs:*"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
+
+}
+
+resource "aws_iam_role_policy_attachment" "attach_kp_node_additional_policy" {
+  role       = aws_iam_role.karpenter_node_role.name
+  policy_arn = aws_iam_policy.node_additional.arn
 }
 
 resource "aws_iam_policy" "karpenter_controller_policy" {
@@ -310,6 +339,12 @@ resource "aws_iam_policy" "karpenter_controller_policy" {
         "Effect"    : "Allow",
         "Action"    : "eks:DescribeCluster",
         "Resource"  : "${data.aws_eks_cluster.cluster.arn}"
+      },
+      {
+        "Sid"       : "AllowEC2",
+        "Effect"    : "Allow",
+        "Action"    : "ec2:*",
+        "Resource"  : "*"
       }
     ]
   })
@@ -476,33 +511,6 @@ resource "null_resource" "create_kubernetes_sa_and_associate_iam_role" {
 # Not required; just to demonstrate functionality of the sub-module
 ################################################################################
 
-/*
-resource "null_resource" "helm_release_karpenter" {
-  
-  triggers = {
-      always_run = "${timestamp()}"
-      region = "${var.region}"
-  }
-
-  depends_on = [null_resource.create_kubernetes_sa_and_associate_iam_role]
-
-  provisioner "local-exec" {
-    when = create
-    command = "chmod +x ${path.module}/files/helm.sh && COMMAND=CREATE KARPENTER=${local.karpenter_version} CLUSTER=${local.cluster_name} REGION=${var.region} ARN=${local.karpenter_role_arn} ENDPOINT=${data.aws_eks_cluster.cluster.endpoint} ${path.module}/files/helm.sh"
-  }
-
-  provisioner "local-exec" {
-    when = destroy
-    command = "chmod +x ${path.module}/files/helm.sh && COMMAND=DELETE REGION=${self.triggers.region} ${path.module}/files/helm.sh"
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-*/
-
 
 resource "helm_release" "karpenter" {
   namespace           = "karpenter"
@@ -559,6 +567,12 @@ resource "kubectl_manifest" "karpenter_node_class" {
   ]
 }
 
+data "aws_instances" "eks_nodes_instances" {
+  filter {
+    name   = "tag:k8s.io/cluster-autoscaler/${local.cluster_name}"
+    values = ["owned"]
+  }
+}
 
 resource "aws_ec2_tag" "sg_tags" {
   resource_id = data.aws_eks_cluster.cluster.vpc_config[0].cluster_security_group_id
@@ -579,6 +593,18 @@ resource "aws_ec2_tag" "subnet_tags" {
   ]
 }
 
+/*
+resource "aws_ec2_tag" "nodes_tags" {
+  for_each    = toset(data.aws_instances.eks_nodes_instances.ids)
+  resource_id = each.value
+  key         = "karpenter.sh/exclude"
+  value       = "true"
+  depends_on = [
+    helm_release.karpenter
+  ]
+}
+*/
+
 locals {
   ic_list   = split(", ", var.instance_category)
   ic_string_formatted = join("\", \"", local.ic_list)
@@ -596,6 +622,12 @@ locals {
   os_string_formatted = join("\", \"", local.os_list)
   os = "[\"${local.os_string_formatted}\"]"
 
+  it_list   = split(", ", var.instance_type)
+  it_string_formatted = join("\", \"", local.it_list)
+  instance_type = "[\"${local.it_string_formatted}\"]"
+
+  it_string_az = "us-west-2b"
+  az = "[\"${local.it_string_az}\"]"
 }
 
 resource "kubectl_manifest" "karpenter_node_pool" {
@@ -607,14 +639,16 @@ resource "kubectl_manifest" "karpenter_node_pool" {
     spec:
       disruption:
         consolidationPolicy: ${var.consolidation_policy}
-        consolidateAfter: ${var.consolidate_after}
+        #consolidateAfter: ${var.consolidate_after}
         expireAfter: ${var.expire_after}
       limits:
         cpu: "${var.cpu_limits}"
+        memory: "${var.mem_limits}"
       template:
         metadata:
           labels:
-            cluster-name: ${local.cluster_name}
+            #cluster-name: ${local.cluster_name}
+            type : karpenter
         spec:
           nodeClassRef:
             name: default
@@ -631,6 +665,12 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             - key: kubernetes.io/os
               operator: In
               values: ${local.os}
+            - key: node.kubernetes.io/instance-type
+              operator: In
+              values: ${local.instance_type}
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values: ${local.az}
 
   YAML
 

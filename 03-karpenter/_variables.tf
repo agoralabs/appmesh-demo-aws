@@ -34,6 +34,9 @@ variable "ENV_APP_GL_KARPENTER_TAG_SELECTOR_NAME" {
 variable "ENV_APP_GL_KARPENTER_CPU_LIMITS" {
   description = "The Karpenter NodePool cpu limits"
 }
+variable "ENV_APP_GL_KARPENTER_MEM_LIMITS" {
+  description = "The Karpenter NodePool mem limits"
+}
 variable "ENV_APP_GL_KARPENTER_CONSOLIDATION_POLICY" {
   description = "The Karpenter NodePool consolidationPolicy"
 }
@@ -45,6 +48,9 @@ variable "ENV_APP_GL_KARPENTER_EXPIRE_AFTER" {
 }
 variable "ENV_APP_GL_KARPENTER_INSTANCE_CATEGORY" {
   description = "The Karpenter NodePool instance-category"
+}
+variable "ENV_APP_GL_KARPENTER_INSTANCE_TYPE" {
+  description = "The Karpenter NodePool instance-type"
 }
 variable "ENV_APP_GL_KARPENTER_ARCHITECTURE" {
   description = "The Karpenter NodePool architecture"

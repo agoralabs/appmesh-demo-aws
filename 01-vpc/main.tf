@@ -2,6 +2,7 @@ locals {
   enable_nat_gateway = var.ENV_APP_GL_VPC_ENABLE_NAT_GATEWAY == "true"
   single_nat_gateway = var.ENV_APP_GL_VPC_SINGLE_NAT_GATEWAY == "true"
   prefix = "${var.ENV_APP_GL_NAMESPACE}-${var.ENV_APP_GL_NAME}-${var.ENV_APP_GL_STAGE}"
+  eks_cluster_name = local.prefix
   vpc_name = "${local.prefix}-vpc"
   public_subnets_names = ["${local.prefix}-public-subnet1", "${local.prefix}-public-subnet2"]
   private_subnets_names = ["${local.prefix}-private-subnet1", "${local.prefix}-private-subnet2"]
@@ -25,6 +26,17 @@ module "vpc" {
   map_public_ip_on_launch          = true
   enable_dns_support               = true
   enable_dns_hostnames             = true
+  
+  private_subnet_tags = { 
+    "kubernetes.io/role/internal-elb" = 1
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
+  }
+
+  public_subnet_tags = { 
+    "kubernetes.io/role/elb" = 1 
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
+  }
+
   tags = {
     VPCName = "${local.vpc_name}"
     Environment = "${var.ENV_APP_GL_STAGE}"
@@ -55,5 +67,3 @@ module "default_vpc" {
     Namespace = "${var.ENV_APP_GL_NAMESPACE}"
   }
 }
-
-
