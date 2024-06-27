@@ -261,7 +261,9 @@ $ eks-node-viewer
 
 ### Step 3 : Create a Karpenter Kubernetes cluster nodes manager (OPTIONAL SECTION)
 
-$${\color{red}**YOU CAN SKIP THIS SECTION**}$$	
+> [!CAUTION]
+> YOU CAN SKIP THIS SECTION.
+
 
 - cd to **03-karpenter** folder.
 - Run apply.sh script : Karpenter should be installed in your cluster and you should have the following result :
@@ -270,7 +272,8 @@ $${\color{red}**YOU CAN SKIP THIS SECTION**}$$
 Apply complete! Resources: 20 added, 0 changed, 0 destroyed.
 ```
 
-- The most important terraform section used here is the following :
+> [!TIP]
+> The most important terraform section used here is the following :
 
 ```
 resource "kubectl_manifest" "karpenter_node_pool" {
