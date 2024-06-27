@@ -1033,8 +1033,6 @@ spec:
 > [!NOTE]
 > **GatewayRoute** : A gateway route is attached to a virtual gateway and routes traffic to an existing virtual service. If a route matches a request, it can distribute traffic to a target virtual service.
 
-![Virtual Router concept](/images/10_virtual_router_concept.png)
-
 ```
 ---
 apiVersion: appmesh.k8s.aws/v1beta2
@@ -1362,3 +1360,11 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 ## Conclusion
 
 This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](https://www.kaiac.io/solutions/appmesh).
+
+
+# Resources
+
+- **AppMesh - Service Mesh & Beyond** : https://tech.forums.softwareag.com/t/appmesh-service-mesh-beyond/
+- **AWS App Mesh: Hosted Service Mesh Control Plane for Envoy Proxy** : https://www.infoq.com/news/2019/01/aws-app-mesh/
+- **The Istio service mesh** : https://istio.io/latest/about/service-mesh/
+- **AWS App Mesh ingress and route enhancements** : https://aws.amazon.com/blogs/containers/app-mesh-ingress-route-enhancements/
