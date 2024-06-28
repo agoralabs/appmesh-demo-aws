@@ -64,7 +64,31 @@ The following products are also used :
 - Keycloak
 - PostgreSQL
 
-Then clone the Git repository containing the Terraform scripts :
+
+## Solution Architecture
+
+This is the Solution Architecture we are going to deploy.
+
+The following AWS Services are used :
+
+- Amazon EKS
+- Amazon EC2
+- Amazon Gognito
+- AWS Cloudfront
+- AWS Lambda
+- AWS CloudMap
+- AWS App Mesh
+- Amazon CloudWatch
+- AWS X-Ray
+
+
+![Solution Architecture App Mesh](/images/solutions-APPMESH.png)
+
+## App Mesh demo infrastructure resources creation step by step
+
+### Step 0 : Clone the Git repository containing the Terraform scripts
+
+Just hit the following command :
 
 ```
 git clone https://github.com/agoralabs/appmesh-demo-aws.git
@@ -102,26 +126,19 @@ You should have the following directory structure :
 └── README.md
 ```
 
-## Solution Architecture
+Folders from **01-** to **23-** contains the following files :
 
-This is the Solution Architecture we are going to deploy.
+```
+.
+├── apply.sh
+├── destroy.sh
+├── main.tf
+├── output.tf
+├── _provider.tf
+└── _variables.tf
+```
 
-The following AWS Services are used :
-
-- Amazon EKS
-- Amazon EC2
-- Amazon Gognito
-- AWS Cloudfront
-- AWS Lambda
-- AWS CloudMap
-- AWS App Mesh
-
-
-![Solution Architecture App Mesh](/images/solutions-APPMESH.png)
-
-## App Mesh demo infrastructure resources creation step by step
-
-For each step, you can just cd inside the folder and hit the well know **terraform** commands :
+For each step, you can just cd inside the **XX-** folder and hit the well know **terraform** commands :
 
 ```
 terraform init
@@ -133,12 +150,10 @@ But I recommend you the provided shell script **./apply.sh**.
 To create the infrastructure elements just cd inside the folder and use apply.sh : 
 
 ```
-$ cd $WORKING_FOLDER
 $ ./apply.sh
 ```
 
-Where WORKING_FOLDER is the folder containing terraform .tf files.
-
+The **./destroy.sh** shell is used to destroy created resources when you are done.
 
 ### Step 1 : Create a VPC 
 
@@ -414,6 +429,9 @@ resource "aws_service_discovery_http_namespace" "service_discovery" {
 
 Those instructions are used to apply the following manifests :
 
+> [!NOTE]
+> **Mesh** : A service mesh is a logical boundary for network traffic between the services that reside within it. When creating a Mesh, you must add a namespace selector. If the namespace selector is empty, it selects all namespaces. To restrict the namespaces, use a label to associate App Mesh resources to the created mesh.
+
 ```
 ---
 apiVersion: appmesh.k8s.aws/v1beta2
@@ -432,6 +450,12 @@ spec:
         daemonEndpoint: 127.0.0.1:2000
 ...
 ```
+
+![AppMesh namespace selector](/images/04_mesh_membership_1.png)
+
+
+> [!NOTE]
+> **VirtualGateway** : A virtual gateway allows resources that are outside of your mesh to communicate to resources that are inside of your mesh. The virtual gateway represents an Envoy proxy running in a Kubernetes service. When creating a Virtual Gateway, you must add a namespace selector with a label to identify the list of namespaces with which to associate Gateway Routes to the created Virtual Gateway.
 
 ```
 ---
@@ -495,6 +519,19 @@ appmesh-gateway   LoadBalancer   172.20.82.97   a7d0b077d231e4713a90dbb62382168b
 ```
 
 ![App Mesh Gateway Network Load Balancer](/images/04_mesh_gateway_nlb_1.png)
+
+
+> [!NOTE]
+> **Other Mesh resources** : After you create your service mesh, you can create virtual services, virtual nodes, virtual routers, and routes to distribute traffic between the applications in your mesh.
+
+Those resources will be created in the following steps : 
+- **Step 9** : deploy a Postgre SQL Database for Keycloak
+- **Step 10** : deploy a Keycloak Identity Provider instance connected to the database created in Step 9
+- **Step 19** : deploy an Angular Single Page Application
+- **Step 20** : deploy a Postgre SQL Database for a SpringBoot API
+- **Step 22** : deploy a SpringBoot API connected to the database created in Step 20
+
+![Mesh resources](/images/04_mesh_api_overview.png)
 
 
 ### Step 5 : Create an HTTP API Gateway
@@ -1072,6 +1109,11 @@ keycloak-demo1-prod-7857d7d59d-7qbfw   3/3     Running   0          11m
 
 ### Step 11 : Create a realm in Keycloak
 
+> [!NOTE]
+> **realm** : A realm is a space where you manage objects, including users, applications, roles, and groups. A user belongs to and logs into a realm. One Keycloak deployment can define, store, and manage as many realms as there is space for in the database.
+
+To create a realm to store our users : 
+
 - cd to **11-kurler-keycloak-realm** folder.
 - Run **apply.sh** script : a Keycloak Realm should be created.
 
@@ -1084,11 +1126,310 @@ module.kurl.null_resource.kurl_command: Creation complete after 11s [id=90739975
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 ```
 
+
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "null_resource" "kurl_command" {
+  
+  triggers = {
+    always_run = "${timestamp()}"
+    input_config_file = "${var.input_config_file}"
+  }
+
+  provisioner "local-exec" {
+    when = create
+    command = "chmod +x ${path.module}/files/kurl.sh && input_command=CREATE input_config_file=${var.input_config_file} ${path.module}/files/kurl.sh"
+  }
+
+  provisioner "local-exec" {
+    when = destroy
+    command = "chmod +x ${path.module}/files/kurl.sh && input_command=DELETE input_config_file=${self.triggers.input_config_file} ${path.module}/files/kurl.sh"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+```
+
+This Terraform script uses a local-exec provisioner to execute curl commands in other create a realm with the configuration defined in **files/11_kurler_keycloak_realm_config.json** file.
+
+```
+{
+    "realm": "rcognito",
+    "enabled": true,
+    "requiredCredentials": [
+        "password"
+    ],
+    "users": [
+        {
+        "username": "alice",
+        "firstName": "Alice",
+        "lastName": "Liddel",
+        "email": "alice@keycloak.org",
+        "enabled": true,
+        "credentials": [
+            {
+            "type": "password",
+            "value": "alice"
+            }
+        ],
+        "realmRoles": [
+            "user", "offline_access"
+        ],
+        "clientRoles": {
+            "account": [ "manage-account" ]
+            }
+        },
+        {
+        "username": "jdoe",
+        "firstName": "jdoe",
+        "lastName": "jdoe",
+        "email": "jdoe@keycloak.org",
+        "enabled": true,
+        "credentials": [
+            {
+            "type": "password",
+            "value": "jdoe"
+            }
+        ],
+        "realmRoles": [
+            "user",
+            "user_premium"
+        ]
+        },
+        {
+        "username": "service-account-authz-servlet",
+        "enabled": true,
+        "serviceAccountClientId": "authz-servlet",
+        "clientRoles": {
+            "authz-servlet" : ["uma_protection"]
+        }
+        },
+        {
+            "username" : "admin",
+            "enabled": true,
+            "email" : "test@admin.org",
+            "firstName": "Admin",
+            "lastName": "Test",
+            "credentials" : [
+            { "type" : "password",
+                "value" : "admin" }
+            ],
+            "realmRoles": [ "user","admin" ],
+            "clientRoles": {
+            "realm-management": [ "realm-admin" ],
+            "account": [ "manage-account" ]
+            }
+        }
+    ],
+    "roles": {
+        "realm": [
+        {
+            "name": "user",
+            "description": "User privileges"
+        },
+        {
+            "name": "user_premium",
+            "description": "User Premium privileges"
+        },
+            {
+            "name": "admin",
+            "description": "Administrator privileges"
+            }
+        ]
+    },
+    "clients": [
+        {
+        "clientId": "authz-servlet",
+        "enabled": true,
+        "baseUrl": "https://keycloak-api-prod.skyscaledev.com/authz-servlet",
+        "adminUrl": "https://keycloak-api-prod.skyscaledev.com/authz-servlet",
+        "bearerOnly": false,
+        "redirectUris": [
+            "https://keycloak-api-prod.skyscaledev.com/authz-servlet/*",
+            "http://127.0.0.1:8080/authz-servlet/*"
+        ],
+        "secret": "secret",
+        "authorizationServicesEnabled": true,
+        "directAccessGrantsEnabled": true,
+        "authorizationSettings": {
+            "resources": [
+            {
+                "name": "Protected Resource",
+                "uri": "/*",
+                "type": "http://servlet-authz/protected/resource",
+                "scopes": [
+                {
+                    "name": "urn:servlet-authz:protected:resource:access"
+                }
+                ]
+            },
+            {
+                "name": "Premium Resource",
+                "uri": "/protected/premium/*",
+                "type": "urn:servlet-authz:protected:resource",
+                "scopes": [
+                {
+                    "name": "urn:servlet-authz:protected:premium:access"
+                }
+                ]
+            }
+            ],
+            "policies": [
+            {
+                "name": "Any User Policy",
+                "description": "Defines that any user can do something",
+                "type": "role",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "config": {
+                "roles": "[{\"id\":\"user\"}]"
+                }
+            },
+            {
+                "name": "Only Premium User Policy",
+                "description": "Defines that only premium users can do something",
+                "type": "role",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "config": {
+                "roles": "[{\"id\":\"user_premium\"}]"
+                }
+            },
+            {
+                "name": "All Users Policy",
+                "description": "Defines that all users can do something",
+                "type": "aggregate",
+                "logic": "POSITIVE",
+                "decisionStrategy": "AFFIRMATIVE",
+                "config": {
+                "applyPolicies": "[\"Any User Policy\",\"Only Premium User Policy\"]"
+                }
+            },
+            {
+                "name": "Premium Resource Permission",
+                "description": "A policy that defines access to premium resources",
+                "type": "resource",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "config": {
+                "resources": "[\"Premium Resource\"]",
+                "applyPolicies": "[\"Only Premium User Policy\"]"
+                }
+            },
+            {
+                "name": "Protected Resource Permission",
+                "description": "A policy that defines access to any protected resource",
+                "type": "resource",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "config": {
+                "resources": "[\"Protected Resource\"]",
+                "applyPolicies": "[\"All Users Policy\"]"
+                }
+            }
+            ],
+            "scopes": [
+            {
+                "name": "urn:servlet-authz:protected:admin:access"
+            },
+            {
+                "name": "urn:servlet-authz:protected:resource:access"
+            },
+            {
+                "name": "urn:servlet-authz:protected:premium:access"
+            },
+            {
+                "name": "urn:servlet-authz:page:main:actionForPremiumUser"
+            },
+            {
+                "name": "urn:servlet-authz:page:main:actionForAdmin"
+            },
+            {
+                "name": "urn:servlet-authz:page:main:actionForUser"
+            }
+            ]
+        }
+        },
+        {
+        "clientId": "spa",
+        "enabled": true,
+        "publicClient": true,
+        "directAccessGrantsEnabled": true,
+        "redirectUris": [ "https://service-spa.skyscaledev.com/*" ]
+        },
+        {
+            "clientId": "rcognitoclient",
+            "name": "rcognitoclient",
+            "adminUrl": "https://keycloak-demo1-prod.skyscaledev.com/realms/rcognito",
+            "alwaysDisplayInConsole": false,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            },
+            "attributes": {},
+            "authenticationFlowBindingOverrides" : {},
+            "authorizationServicesEnabled": true,
+            "bearerOnly": false,
+            "directAccessGrantsEnabled": true,
+            "enabled": true,
+            "protocol": "openid-connect",
+            "description": "Client OIDC pour application KaiaC",
+    
+            "rootUrl": "${authBaseUrl}",
+            "baseUrl": "/realms/rcognito/account/",
+            "surrogateAuthRequired": false,
+            "clientAuthenticatorType": "client-secret",
+            "defaultRoles": [
+                "manage-account",
+                "view-profile"
+            ],
+            "redirectUris": [
+                "https://kaiac.auth.us-west-2.amazoncognito.com/oauth2/idpresponse", "https://service-spa.skyscaledev.com/*"
+            ],
+            "webOrigins": [],
+            "notBefore": 0,
+            "consentRequired": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "frontchannelLogout": false,
+            "fullScopeAllowed": false,
+            "nodeReRegistrationTimeout": 0,
+            "defaultClientScopes": [
+                "web-origins",
+                "role_list",
+                "profile",
+                "roles",
+                "email"
+            ],
+            "optionalClientScopes": [
+                "address",
+                "phone",
+                "offline_access",
+                "microprofile-jwt"
+            ]
+        }
+    ]
+    }
+```
+
 - Verify the realm in Keycloak admin console : 
 
 ![Keycloak realm](/images/11_keycloak_realm_1.png)
 
 ### Step 12 : Create a Cognito user pool to federate Keycloak identities
+
+Our demo app users will federate through a third-party identity provider (IdP), which is the Keycloak instance we deployed in step 11. The user pool manages the overhead of handling the tokens that are returned from Keycloak OpenID Connect (OIDC) IdP. With the built-in hosted web UI, Amazon Cognito provides token handling and management for authenticated users from all IdPs. This way, your backend systems can standardize on one set of user pool tokens.
+
+![How federated sign-in works in Amazon Cognito user pools](/images/12_cognito_federation_oidc_1.png)
+
+To create a Cognito user pool to federate Keycloak identities :
 
 - cd to **12-fedusers** folder.
 - Run **apply.sh** script : a Cognito User Pool should be created.
@@ -1100,6 +1441,46 @@ module.cogusrpool.aws_cognito_user_pool_domain.user_pool_domain: Creation comple
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ```
 
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+
+```
+resource "aws_cognito_user_pool" "user_pool" {
+  name = "${var.user_pool_name}" 
+  username_configuration {
+    case_sensitive = false
+  }
+}
+
+resource "aws_cognito_user_pool_domain" "user_pool_domain" {
+  domain           = "${var.cognito_domain_name}"
+  user_pool_id     = aws_cognito_user_pool.user_pool.id
+}
+
+resource "aws_cognito_identity_provider" "keycloak_oidc" {
+  user_pool_id                 = aws_cognito_user_pool.user_pool.id
+  provider_name                = "${var.user_pool_provider_name}"
+  provider_type                = "${var.user_pool_provider_type}"
+  provider_details             = {
+    client_id                 = "${var.user_pool_provider_client_id}"
+    client_secret             = "${data.external.client_secret.result.client_secret}"
+    attributes_request_method = "${var.user_pool_provider_attributes_request_method}"
+    oidc_issuer               = "${var.user_pool_provider_issuer_url}"
+    authorize_scopes          = "${var.user_pool_authorize_scopes}"
+
+    token_url            = "${var.user_pool_provider_issuer_url}/protocol/openid-connect/token" 
+    attributes_url         = "${var.user_pool_provider_issuer_url}/protocol/openid-connect/userinfo" 
+    authorize_url    = "${var.user_pool_provider_issuer_url}/protocol/openid-connect/auth" 
+    #end_session_endpoint      = "${var.user_pool_provider_issuer_url}/protocol/openid-connect/logout" 
+    jwks_uri                  = "${var.user_pool_provider_issuer_url}/protocol/openid-connect/certs"
+  }
+
+  attribute_mapping = local.attribute_mapping
+  
+}
+```
+
 - Verify the created Cognito User Pool in Amazon Cognito console : 
 
 ![Cognito Keycloak User Pool](/images/12_cognito_keycloak_userpool_1.png)
@@ -1109,6 +1490,16 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ![Cognito Federated Keycloak User Pool](/images/12_cognito_federated_keycloak_1.png)
 
 ### Step 13 : Create a Cognito user pool client to integrate a Single Page Application (OAuth2 implicit flow)
+
+In our demo users will access an Angular single page application if they authenticate successfully through Cognito.
+
+A user pool app client is a configuration within a user pool that interacts with one mobile or web application that authenticates with Amazon Cognito. When you create an app client in Amazon Cognito, you can pre-populate options based on the standard OAuth flows types.
+
+For our Single page Application we need the standard **OAuth2 implicit grant flow**. The implicit grant delivers an access and ID token, but not refresh token, to your user's browser session directly from the Authorize endpoint.
+
+![Navigation Flow](/images/13_cognito_oauth2_navigation_flow.png)
+
+To create a Cognito user pool client to integrate a Single Page Application which support OAuth2 implicit flow : 
 
 - cd to **13-fedclient-spa** folder.
 - Run **apply.sh** script : a Cognito User Pool Client should be created.
@@ -1123,6 +1514,35 @@ module.cogpoolclient.aws_cognito_user_pool_client.user_pool_client: Creation com
 Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 ```
 
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "aws_cognito_user_pool_client" "user_pool_client" {
+  name                     = "${var.user_pool_app_client_name}"
+  user_pool_id             = local.user_pool_id
+  generate_secret          = local.generate_secret
+  allowed_oauth_flows      = local.oauth_flows
+  allowed_oauth_scopes     = local.all_scopes
+  allowed_oauth_flows_user_pool_client = true
+  callback_urls    = local.callback_urls
+  logout_urls      = local.logout_urls
+  supported_identity_providers        = ["${var.user_pool_provider_name}"] 
+
+  refresh_token_validity = var.user_pool_oauth_refresh_token_validity
+  access_token_validity = var.user_pool_oauth_access_token_validity
+  id_token_validity        = var.user_pool_oauth_id_token_validity
+
+  token_validity_units {
+    access_token  = "minutes"
+    id_token      = "minutes"
+    refresh_token = "days"
+  }
+
+  depends_on = [ aws_cognito_resource_server.resource_server ]
+}
+```
+
 - Verify the created Cognito User Pool client : 
 
 ![Cognito User Pool client](/images/13_cognito_client_spa_1.png)
@@ -1133,6 +1553,12 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 
 
 ### Step 14 : Create a Lambda Authorizer and attach it to the API Gateway
+
+A Lambda authorizer is used to control access to your API. When a client makes a request your API's method, API Gateway calls your Lambda authorizer. The Lambda authorizer takes the caller's identity as the input and returns an IAM policy as the output.
+
+![Lambda Authorizer](/images/14_lambda_authorizer_overview_1.png)
+
+We created an API Gateway in step 5. And if you remember the route **ANY /{proxy+}** has been created without any access control mecanism defined. This is what we will achieve with our Lambda. 
 
 - cd to **14-apiauthorizer** folder.
 - Update the **JWKS_ENDPOINT** value in **files/14_authorizer_real_token_env_vars.json** with the **Token signing key URL** of the Cognito User Pool.
@@ -1155,6 +1581,45 @@ module.authorizer.null_resource.attach_authorizer: Creation complete after 3s [i
 Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 ```
 
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "aws_lambda_function" "authorizer" {
+  function_name = "${var.authorizer_name}"
+
+  runtime = "${var.authorizer_runtime}"
+  handler = "${var.authorizer_name}.handler"
+  timeout = var.authorizer_timeout
+
+  role = aws_iam_role.iam_for_lambda.arn
+
+  filename      = "${data.archive_file.lambda_archive.output_path}"
+
+  environment {
+    variables = local.env_vars
+  }
+
+  depends_on = [ null_resource.create_file ]
+
+}
+
+resource "aws_apigatewayv2_authorizer" "api_gw" {
+  api_id   = "${local.api_id}"
+  authorizer_type = "REQUEST"
+  authorizer_uri  = "arn:aws:apigateway:${var.region}:lambda:path/2015-03-31/functions/${aws_lambda_function.authorizer.arn}/invocations"
+  name            = "${var.authorizer_name}"
+  authorizer_payload_format_version = "2.0"
+
+  depends_on = [
+    aws_lambda_permission.allow_apigateway
+  ]
+}
+
+```
+
+This Terraform script will deploy our Lambda function and attach the function to the principal route of our API Gateway.
+
 - Verify the API Gateway and the attached Lambda Authorizer
 
 ![API Gateway and the attached Lambda Authorizer](/images/14_api_gateway_lambda_1.png)
@@ -1167,6 +1632,10 @@ Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 
 
 ### Step 15 : Create a Lambda@Edge function to redirect to Cognito if unauthorized access
+
+Lambda@Edge is an extension of AWS Lambda. Lambda@Edge is a compute service that lets you execute functions that customize the content that Amazon CloudFront delivers. You can author Node.js or Python functions in the Lambda console in one AWS Region, US East (N. Virginia).
+
+To create a Lambda@Edge function to redirect to Cognito login if unauthorized access :
 
 - cd to **15-atedge** folder.
 - Update the file **files/14_authorizer_real_token_env_vars.json** 
@@ -1185,9 +1654,35 @@ module.lambda_edge.aws_lambda_function.lambda_edge: Creation complete after 13s 
 Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
 ```
 
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "aws_lambda_function" "lambda_edge" {
+  function_name = "${var.lambda_edge_name}"
+
+  runtime = "${var.lambda_edge_runtime}"
+  handler = "${var.lambda_edge_name}.handler"
+  timeout = var.lambda_edge_timeout
+
+  role = aws_iam_role.iam_for_lambda.arn
+  filename      = "${data.archive_file.lambda_archive.output_path}"
+  publish = true
+  provider = aws.us_east_1
+  depends_on = [ null_resource.create_file ]
+}
+```
+
+
 ![Lambda at Edge](/images/15_lambda_at_edge_1.png)
 
 ### Step 16 : Create a Cloudfront distribution with the API Gateway as origin and the Lambda@Edge attached in the View-Request
+
+When a user enters the Angular SPA, we need a mecanism to check wheater or not the user is authenticated. With Amazon CloudFront, you can write your own code to customize how your CloudFront distributions process HTTP requests and responses.
+
+![Cloudfront Edge overview](/images/16_cloudfront_edge_overview_1.png)
+
+So we will create a Cloudfront distribution to take advantage of those HTTP behaviour customization features by adding a Lambda@Edge function which will be invoked on each **Viewer-request**.
 
 - cd to **16-apigwfront** folder.
 - Run **apply.sh** script : a Cloudfront distribution with the API Gateway as origin should be created and the Lambda@Edge attached in the View-Request.
@@ -1199,10 +1694,72 @@ module.cloudfront.aws_cloudfront_distribution.distribution: Creation complete af
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 ```
 
+> [!TIP]
+> The most important section of the Terraform script is the following :
+
+```
+resource "aws_cloudfront_distribution" "distribution" {
+  comment = "Distribution for ${var.app_namespace} ${var.app_name} ${var.app_env}"
+  origin {
+    domain_name = "${local.api_gw_endpoint}"
+    origin_id   = "${local.origin_id}"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_ssl_protocols   = ["TLSv1.1", "TLSv1.2"]
+      origin_protocol_policy = "https-only"
+    }
+  }
+
+  enabled             = true
+  default_cache_behavior {
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "${local.origin_id}"
+    forwarded_values {
+      query_string = true
+      cookies {
+        forward = "all"
+      }
+
+      headers = ["*"]
+    }
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+
+    lambda_function_association {
+      event_type   = "viewer-request"
+      lambda_arn   = "${data.aws_lambda_function.lambda_edge.qualified_arn}"
+      include_body = false
+    }
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+    # SSL certificate for the service.
+    viewer_certificate {
+        cloudfront_default_certificate = false
+        acm_certificate_arn = data.aws_acm_certificate.acm_cert.arn
+        ssl_support_method = "sni-only"
+        minimum_protocol_version = "TLSv1.2_2021"
+    }
+
+}
+```
+
 ![Cloudfront Lambda at Edge](/images/16_cloudfront_distribution_at_edge_1.png)
 
 
 ### Step 17 : Create a DNS record for the Cloudfront distribution
+
+We need a DNS record to expose our cloudfront distribution.
 
 - cd to **17-meshcfexposer-spa** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone and the Cloudfront Distribution ID.
@@ -1219,6 +1776,8 @@ Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 ```
 
 ### Step 18 : Create a DNS record for the SPA
+
+We need a DNS record to expose our Angular SPA.
 
 - cd to **18-meshexposer-spa** folder.
 - Update **terraform.tfvars** to specify a Route53 Hosted Zone.
@@ -1240,6 +1799,40 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ```
 
 ### Step 19 : Deploy the SPA inside the App Mesh
+
+The Angular Single page application we deploy is contained in the image **041292242005.dkr.ecr.us-west-2.amazonaws.com/k8s:spa_staging**.
+
+You can find the source code in the following github repository : https://github.com/agoralabs/demo-kaiac-cognito-spa.git 
+
+The image contains a simple angular code to fetch the JWT token received after the OAuth2 implicit flow.
+
+```
+private fetchAuthInfoFromURL(): void {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = params.get('access_token');
+    const idToken = params.get('id_token');
+    this.accessToken = accessToken;
+    this.idToken = idToken;
+
+    if (idToken) {
+        const [header, payload, signature] = idToken.split('.');
+
+        const decodedPayload = JSON.parse(atob(payload));
+        if (decodedPayload) {
+        const userId = decodedPayload.sub;
+        const username = decodedPayload.username;
+        const email = decodedPayload.email;
+
+        this.email = email;
+        this.username = username;
+        this.userId = userId;
+
+        }
+    }
+}
+```
+
+To deploy your SPA, do the following : 
 
 - cd to **19-meshservice-spa** folder.
 - In the file **files/19-appmesh-service-spa.yaml**, update ENV_APP_GL_USER_POOL_ID and ENV_APP_GL_USER_POOL_CLIENT_ID in the *service-spa* ConfigMap
@@ -1292,6 +1885,8 @@ service-spa-7b4884cd4f-pzpjl   3/3     Running   0          2m49s
 
 ### Step 20 : Deploy a Postgre database for the API inside the App Mesh
 
+We also need to deploy a Java SpringBoot API for our demo. To be realistic, we need another Postgre SQL Database for our SspringBoot application. To achieve it do the following : 
+
 - cd to **20-meshservice-postgre-api** folder.
 - Run **apply.sh** script : a Postgre SQL pod should be created.
 
@@ -1311,7 +1906,10 @@ postgreapi-754bd8b77d-7lhv2   3/3     Running   0          49s
 
 ### Step 21 : Create a DNS record for the API
 
+Our SpringBoot API should be accessible at **https://service-api.skyscaledev.com/**. So we need to create a DNS record.
+
 - Go to **21-meshexposer-api** directory.
+- Run **apply.sh** script : The DNS record should be created.
 
 ```
 module.exposer.aws_route53_record.dnsapi: Creation complete after 50s [id=Z0017173R6DN4LL9QIY3_service-api_CNAME]
@@ -1320,6 +1918,12 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ```
 
 ### Step 22 : Deploy the API inside the App Mesh
+
+We will now deploy our Java SpringBoot API using the following Docker image :           **041292242005.dkr.ecr.us-west-2.amazonaws.com/springbootapi:24.0.1**
+
+You can also find the code source in the following github repository : https://github.com/agoralabs/demo-kaiac-cognito-springboot-api.git 
+
+The following step will deploy your SpringBoot API inside your Service Mesh.
 
 - cd to **22-meshservice-api** folder.
 
