@@ -7,14 +7,18 @@ If you still have a doubt for your own organization, just take a look at your wo
 
 Our purpose is to showcase the capabilities of service mesh concept on Amazon Web Services Cloud (AWS) with Terraform. But before diving into terraform code, let's explore some core knowledge to better understanging of the service Mesh interesting concept.
 
-![Mobolith Microservices and Service Mesh](/images/00_monolith_microservices_servicemesh_1.png)
-
-
 ## Why an organization needs a service mesh?
+
+A monolithic architecture is a traditional approach to designing software where an entire application is built as a single, indivisible unit. In this architecture, all the different components of the application, such as the user interface, business logic, and data access layer, are tightly integrated and deployed together.
+As a monolithic application grows, it becomes more complex and harder to manage.
+This complexity can make it difficult for developers to understand how different parts of the application interact, leading to longer development times and increased risk of errors.
 
 In modern application architecture, you can build applications as a collection of small, independently deployable microservices. Different teams may build individual microservices and choose their coding languages and tools. However, the microservices must communicate for the application code to work correctly.
 
 Application performance depends on the speed and resiliency of communication between services. Developers must monitor and optimize the application across services, but it’s hard to gain visibility due to the system's distributed nature. As applications scale, it becomes even more complex to manage communications.
+
+![Monolith Microservices and Service Mesh](/images/00_monolith_microservices_servicemesh_1.png)
+
 
 There are two main drivers to service mesh adoption :
 
@@ -2139,3 +2143,4 @@ This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](ht
 - **AWS App Mesh — Deep Dive** : https://medium.com/@iyer.hareesh/aws-app-mesh-deep-dive-60c9ad227c9d
 - **Circuit breaking** : https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/circuit_breaking#arch-overview-circuit-break
 - **Envoy defaults set by App Mesh** : https://docs.aws.amazon.com/app-mesh/latest/userguide/envoy-defaults.html#default-circuit-breaker
+- **Monolithic vs Microservices Architecture** : https://www.geeksforgeeks.org/monolithic-vs-microservices-architecture/
