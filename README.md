@@ -534,6 +534,96 @@ Those resources will be created in the following steps :
 ![Mesh resources](/images/04_mesh_api_overview.png)
 
 
+> [!NOTE]
+> **Mesh Observability** : In this step we also added the creation of XRay, Fluentd and CloudWatch DaemonSets for observability inside the Mesh. You can find them in the following manifest file **files/4-mesh.yaml**.
+
+XRay DaemonSet
+
+```
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: xray-daemon
+  namespace: aws-observability
+spec:
+  selector:
+    matchLabels:
+      name: xray-daemon
+  template:
+    metadata:
+      labels:
+        name: xray-daemon
+    spec:
+      containers:
+        - name: xray-daemon
+          image: amazon/aws-xray-daemon
+          ports:
+            - containerPort: 2000
+              protocol: UDP
+          env:
+            - name: AWS_REGION
+              value: us-west-2
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 200m
+            requests:
+              memory: 128Mi
+              cpu: 100m
+```
+
+CloudWatch DaemonSet 
+
+```
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cloudwatch-agent
+  namespace: aws-observability
+spec:
+  selector:
+    matchLabels:
+      name: cloudwatch-agent
+  template:
+    metadata:
+      labels:
+        name: cloudwatch-agent
+    spec:
+      containers:
+        - name: cloudwatch-agent
+          image: amazon/cloudwatch-agent:latest
+          imagePullPolicy: Always
+          ...
+```
+
+Fluentd DaemonSet
+
+```
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-cloudwatch
+  namespace: aws-observability
+  labels:
+    k8s-app: fluentd-cloudwatch
+spec:
+  selector:
+    matchLabels:
+      k8s-app: fluentd-cloudwatch
+  template:
+    metadata:
+      labels:
+        k8s-app: fluentd-cloudwatch
+      annotations:
+        configHash: 8915de4cf9c3551a8dc74c0137a3e83569d28c71044b0359c2578d2e0461825
+    spec:
+      serviceAccountName: fluentd
+      terminationGracePeriodSeconds: 30
+```
+
 ### Step 5 : Create an HTTP API Gateway
 
 - cd to **05-apigateway** folder.
@@ -942,7 +1032,7 @@ spec:
 ```
 
 > [!NOTE]
-> **VirtualNode** : In App Mesh, a virtual node acts as a logical pointer to a Kubernetes deployment via a service. The *serviceDiscovery* attribute indicates that the service will be discovered via App Mesh.
+> **VirtualNode** : In App Mesh, a virtual node acts as a logical pointer to a Kubernetes deployment via a service. The *serviceDiscovery* attribute indicates that the service will be discovered via App Mesh. To have Envoy access logs sent to CloudWatch Logs, be sure to configure the log path to be /dev/stdout in each virtual node.
 
 ```
 ---
@@ -963,6 +1053,10 @@ spec:
     awsCloudMap:
       serviceName: postgre
       namespaceName: k8s-mesh-staging
+  logging:
+    accessLog:
+      file:
+        path: "/dev/stdout"
 ```
 
 > [!NOTE]
@@ -1986,6 +2080,40 @@ Finally we can use our Angular Single Page Application to call the SpringBoot AP
 
 ### Step 24 : Observability
 
+#### CloudWatch Logs
+
+In Step 4 Fluentd is set up as a DaemonSet to send logs to CloudWatch Logs. Fluentd creates the following log groups if they don't already exist : 
+
+- **/aws/containerinsights/Cluster_Name/application** : All log files in /var/log/containers
+- **/aws/containerinsights/Cluster_Name/host** : Logs from /var/log/dmesg, /var/log/secure, and /var/log/messages
+- **/aws/containerinsights/Cluster_Name/dataplane** : The logs in /var/log/journal for kubelet.service, kubeproxy.service, and docker.service
+
+In CloudWatch you can also observe API Gateway Logs, Lambda Authorizer Logs and Lamda@Edge Logs.
+
+![API Gateway Logs](/images/24_cloudwatch_apigw_logs.png)
+
+![API Gateway Logs Lambda Authorizer logs](/images/24_lambda_authorizer_logs.png)
+
+#### X-Ray Tracing
+
+In Step 4 X-Ray Tracing is enabled in the App Mesh Controller configuration by including --set tracing.enabled=true and --set tracing.provider=x-ray.
+
+```
+# 04-mesh/files/4-appmesh-controller.yaml
+tracing:
+  # tracing.enabled: `true` if Envoy should be configured tracing
+  enabled: true
+  # tracing.provider: can be x-ray, jaeger or datadog
+  provider: x-ray
+```
+
+X-Ray Traces
+
+![X-Ray Traces](/images/24_xray_traces.png)
+
+X-Ray Map
+
+![X-Ray Traces Map](/images/24_xray_trace_map.png)
 
 
 ## Clean up
