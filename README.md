@@ -2123,6 +2123,9 @@ X-Ray Map
 
 ## Conclusion
 
+App Mesh, being a managed service, reduces the complexity and overhead of managing the service mesh. There many other features provided by App Mesh that we didn't cover in deep like Traffic shifting, Request Timeouts, Circuit Breaker, Retry or mTLS.
+
+
 This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](https://www.kaiac.io/solutions/appmesh).
 
 
@@ -2133,3 +2136,6 @@ This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](ht
 - **The Istio service mesh** : https://istio.io/latest/about/service-mesh/
 - **AWS App Mesh ingress and route enhancements** : https://aws.amazon.com/blogs/containers/app-mesh-ingress-route-enhancements/
 - **How to use OAuth 2.0 in Amazon Cognito: Learn about the different OAuth 2.0 grants**: https://aws.amazon.com/blogs/security/how-to-use-oauth-2-0-in-amazon-cognito-learn-about-the-different-oauth-2-0-grants/
+- **AWS App Mesh — Deep Dive** : https://medium.com/@iyer.hareesh/aws-app-mesh-deep-dive-60c9ad227c9d
+- **Circuit breaking** : https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/circuit_breaking#arch-overview-circuit-break
+- **Envoy defaults set by App Mesh** : https://docs.aws.amazon.com/app-mesh/latest/userguide/envoy-defaults.html#default-circuit-breaker
