@@ -1635,6 +1635,8 @@ This Terraform script will deploy our Lambda function and attach the function to
 
 Lambda@Edge is an extension of AWS Lambda. Lambda@Edge is a compute service that lets you execute functions that customize the content that Amazon CloudFront delivers. You can author Node.js or Python functions in the Lambda console in one AWS Region, US East (N. Virginia).
 
+![Lambda at Edge](/images/15_lambda_at_edge_cloudfront.png)
+
 To create a Lambda@Edge function to redirect to Cognito login if unauthorized access :
 
 - cd to **15-atedge** folder.
@@ -1673,8 +1675,7 @@ resource "aws_lambda_function" "lambda_edge" {
 }
 ```
 
-
-![Lambda at Edge](/images/15_lambda_at_edge_1.png)
+Now that our Lambda@Edge function is created, we can now create a Cloudfront distribution and attach our Lambda@Edge function.
 
 ### Step 16 : Create a Cloudfront distribution with the API Gateway as origin and the Lambda@Edge attached in the View-Request
 
@@ -1938,6 +1939,12 @@ Apply complete! Resources: 15 added, 0 changed, 0 destroyed.
 
 ### Step 23 : Create a Cognito user pool client to integrate an API (OAuth2 client_credentials flow)
 
+We need to insert some datas in the SpringBoot API Postgre SQL database. To do that we will use SpringBoot API POST https://service-api.skyscaledev.com/employee/v1/ endpoint via Postman. To avoid an error we will add a specific cognito client with a **standard client_credentials grant flow**. Client credentials is an authorization-only grant suitable for machine-to-machine access. To receive a client credentials grant, bypass the Authorize endpoint and generate a request directly to the Token endpoint. Your app client must have a client secret and support client credentials grants only. In response to your successful request, the authorization server returns an access token.
+
+![Cognito Client Credentials overview](/images/23_client_credentials_grant_cognit1.png)
+
+To create the client_credentials Cognito client :
+
 - cd to **23-fedclient-api** folder.
 - Run **apply.sh** script : a userpool client named **springbootapi** should be created.
 
@@ -1950,16 +1957,41 @@ module.cogpoolclient.aws_cognito_user_pool_client.user_pool_client: Creation com
 Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 ```
 
-![Cognito Redirection](/images/23_postman_use_client_credentials_1.png)
+We first retrieve a token using client credentials grant with Postman :
 
-![Cognito Redirection](/images/23_postman_use_client_credentials_create_1.png)
+![Retrieve token via client credentials grant](/images/23_postman_use_client_credentials_1.png)
 
-![Cognito Redirection](/images/23_spa_call_api_1.png)
+We can now use our SpringBoot API in Postman with the following payload :
+```
+{
+    "id": 1,
+    "first_name": "Marie",
+    "last_name": "POPPINS",
+    "age": "20",
+    "designation": "Developer",
+    "phone_number": "0624873333",
+    "joined_on": "2024-06-02",
+    "address": "3 allée louise bourgeois Clamart",
+    "date_of_birth": "2018-04-30"
+
+}
+```
+
+![POST Add Datas using token](/images/23_postman_use_client_credentials_create_1.png)
+
+
+Finally we can use our Angular Single Page Application to call the SpringBoot API.
+
+![Call API from SPA](/images/23_spa_call_api_1.png)
+
+### Step 24 : Observability
+
+
 
 ## Clean up
 
 - cd in each folder,
-- Run **destroy.sh** shell script.
+- Run **./destroy.sh** shell script.
 
 ## Conclusion
 
@@ -1972,3 +2004,4 @@ This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](ht
 - **AWS App Mesh: Hosted Service Mesh Control Plane for Envoy Proxy** : https://www.infoq.com/news/2019/01/aws-app-mesh/
 - **The Istio service mesh** : https://istio.io/latest/about/service-mesh/
 - **AWS App Mesh ingress and route enhancements** : https://aws.amazon.com/blogs/containers/app-mesh-ingress-route-enhancements/
+- **How to use OAuth 2.0 in Amazon Cognito: Learn about the different OAuth 2.0 grants**: https://aws.amazon.com/blogs/security/how-to-use-oauth-2-0-in-amazon-cognito-learn-about-the-different-oauth-2-0-grants/
