@@ -1,4 +1,4 @@
-# My Service Mesh journey with Terraform on AWS Cloud
+# My Service Mesh journey with Terraform on AWS Cloud - Part 1
 
 In the ever-evolving landscape of modern applications and cloud native architectures, the need for efficient, scalable, and secure communication between services is paramount.
 If you still have a doubt for your own organization, just take a look at your workloads and if you are deploying more and more services and observing thoses services is a bit challenging, for sure your organization probably need a service Mesh.
@@ -42,7 +42,9 @@ A proxy acts as an intermediary gateway between your organization’s network an
 
 ![Service Mesh works](/images/00_2_how_service_mesh_works_1.png)
 
-# Let's dive into my Demo Architecture Solution
+
+
+# My Service Mesh journey with Terraform on AWS Cloud - Part 2
 
 As we already stated we are living in a world were microservice architectures are becoming increasingly complex. Companies are constantly seeking solutions to enhance the resilience, security, and visibility of their distributed applications. This is where AWS App Mesh comes into play by offering enhanced observability, granular traffic control, and improved security. Just discover throught this solution proposal how this revolutionary solution is transforming the way we design and operate modern applications. 
 
@@ -159,6 +161,10 @@ The **./destroy.sh** shell is used to destroy created resources when you are don
 
 ### Step 1 : Create a VPC 
 
+With Amazon Virtual Private Cloud (Amazon VPC), you can launch AWS resources in a logically isolated virtual network that you've defined. This virtual network closely resembles a traditional network that you'd operate in your own data center, with the benefits of using the scalable infrastructure of AWS.
+
+To create a brand new VPC for this App Mesh showcase just do the following : 
+
 - cd to **01-vpc** folder.
 - Run **apply.sh** script : a vpn named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
 
@@ -213,6 +219,10 @@ And if you take a look at the AWS VPC Service Web Console, you should see this :
 
 
 ### Step 2 : Create a Kubernetes EKS cluster
+
+Amazon Elastic Kubernetes Service (Amazon EKS) is a fully-managed, certified Kubernetes conformant service that simplifies the process of building, securing, operating, and maintaining Kubernetes clusters on AWS.
+
+Since we need a Kubernetes cluster to showcase App Mesh, just do the following to create a brand new EKS Kubernetes cluster :
 
 - cd to **02-k8scluster** folder.
 - Run **apply.sh** script : an EKS cluster named **k8s-mesh-staging-vpc** should be created, and you should have the following result :
@@ -291,6 +301,9 @@ $ eks-node-viewer
 > [!CAUTION]
 > YOU CAN SKIP THIS SECTION.
 
+Karpenter is a Kubernetes node's manager. Karpenter automatically launches just the right compute resources to handle your cluster's applications. It is designed to let you take full advantage of the cloud with fast and simple compute provisioning for Kubernetes clusters.
+
+Eventhough Karpenter is no mandatory for our showcase, if you want to try it, just do the following :
 
 - cd to **03-karpenter** folder.
 - Run **apply.sh** script : Karpenter should be installed in your cluster and you should have the following result :
@@ -362,7 +375,7 @@ nodeclaims.karpenter.sh                      2024-06-24T12:33:01Z
 nodepools.karpenter.sh                       2024-06-24T12:33:02Z
 ```
 
-- Verify that the Karperter Controller pods are created in the Kubernetes clsuter : 
+- Verify that the Karpenter Controller pods are created in the Kubernetes clsuter : 
 
 ```
 $ kubectl get pods -n karpenter
@@ -388,6 +401,12 @@ $ eks-node-viewer
 
 
 ### Step 4 : Create AppMesh Controller and AppMesh Gateway
+
+In this step, we will create an AWS App Mesh Controller For K8s. It is a controller to help manage App Mesh resources for a Kubernetes cluster and injecting sidecars to Kubernetes Pods. The controller watches custom resources for changes and reflects those changes into the App Mesh API. The controller maintains the custom resources (CRDs): meshes, virtualnodes, virtualrouters, virtualservices, virtualgateways and gatewayroutes. The custom resources map to App Mesh API objects.
+
+The Terraform script used here will all so create an AppMesh Gateway. It is a virtual gateway that allows resources that are outside of your mesh to communicate to resources that are inside of your mesh. The virtual gateway represents an Envoy proxy running in a Kubernetes service, or on an Amazon EC2 instance. Unlike a virtual node, which represents Envoy running with an application, a virtual gateway represents Envoy deployed by itself.
+
+Just do the following : 
 
 - cd to **04-mesh** folder.
 - Run **apply.sh** script : a Mesh named **k8s-mesh-staging** should be created.
@@ -628,6 +647,10 @@ spec:
 
 ### Step 5 : Create an HTTP API Gateway
 
+Amazon API Gateway is an AWS service for creating, publishing, maintaining, monitoring, and securing REST, HTTP, and WebSocket APIs at any scale. So an HTTP is suitable to expose services deployed in your Mesh.
+
+Jus do the following to create an HTT API Gateway :
+
 - cd to **05-apigateway** folder.
 - Run **apply.sh** script : an API Gateway named **k8s-mesh-staging-api-gw** should be created.
 
@@ -766,6 +789,8 @@ resource "aws_ebs_volume" "aws_volume" {
 
 ### Step 7 : Create a Persistent Volume
 
+After the EBS CSI Addon installed and the EBS Volume created, we can now create the Persistent Volume :
+
 - cd to **07-k8smanifest-pvolume** folder.
 - Update the manifest in *files/7-ebs-csi-driver-pv.yaml* with the correct volume ID
 
@@ -873,6 +898,9 @@ resource "aws_route53_record" "dnsapi" {
 ![DNS Record Keycloak](/images/08_dns_record_keycloak_1.png)
 
 ### Step 9 : Deploy a Postgre database for Keycloak inside the App Mesh
+
+Keycloak can use a PostgreSQL instance as a Persistent Storage.
+To create a PostgreSQL instance for Keycloak, just do the following : 
 
 - cd to **09-meshservice-postgre-keycloak** folder.
 - Run **apply.sh** script : a Postgre SQL pod should be created.
@@ -1092,6 +1120,10 @@ postgre-58fbbd958d-w8zhh   3/3     Running   0          10m
 ![Postgre Keycloak Discovered service](/images/09_postgre_cloud_map_1.png)
 
 ### Step 10 : Deploy Keycloak inside the App Mesh
+
+Keycloak is an open source identity and access management solution. It is easy to setup and support standards like OpenID Connect, which will be useful for us in the AppMesh showcase.
+
+To deploy your Keycloak instance, just do the following : 
 
 - cd to **10-meshservice-keycloak** folder.
 - Run **apply.sh** script : a Keycloak pod should be created.
@@ -1587,7 +1619,7 @@ resource "aws_cognito_identity_provider" "keycloak_oidc" {
 
 ### Step 13 : Create a Cognito user pool client to integrate a Single Page Application (OAuth2 implicit flow)
 
-In our demo users will access an Angular single page application if they authenticate successfully through Cognito.
+In our showcase, users will access an Angular single page application if they authenticate successfully through Cognito.
 
 A user pool app client is a configuration within a user pool that interacts with one mobile or web application that authenticates with Amazon Cognito. When you create an app client in Amazon Cognito, you can pre-populate options based on the standard OAuth flows types.
 
@@ -1847,7 +1879,6 @@ resource "aws_cloudfront_distribution" "distribution" {
         ssl_support_method = "sni-only"
         minimum_protocol_version = "TLSv1.2_2021"
     }
-
 }
 ```
 
@@ -2023,6 +2054,7 @@ You can also find the code source in the following github repository : https://g
 The following step will deploy your SpringBoot API inside your Service Mesh.
 
 - cd to **22-meshservice-api** folder.
+- Run **apply.sh** script : The SpringBoot API should be deployed.
 
 ```
 $ ./apply.sh
@@ -2069,7 +2101,6 @@ We can now use our SpringBoot API in Postman with the following payload :
     "joined_on": "2024-06-02",
     "address": "3 allée louise bourgeois Clamart",
     "date_of_birth": "2018-04-30"
-
 }
 ```
 
@@ -2113,7 +2144,7 @@ X-Ray Traces
 
 ![X-Ray Traces](/images/24_xray_traces.png)
 
-X-Ray Map
+X-Ray Traces Map
 
 ![X-Ray Traces Map](/images/24_xray_trace_map.png)
 
@@ -2131,7 +2162,7 @@ App Mesh, being a managed service, reduces the complexity and overhead of managi
 This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](https://www.kaiac.io/solutions/appmesh).
 
 
-# Resources
+## Resources
 
 - **AppMesh - Service Mesh & Beyond** : https://tech.forums.softwareag.com/t/appmesh-service-mesh-beyond/
 - **AWS App Mesh: Hosted Service Mesh Control Plane for Envoy Proxy** : https://www.infoq.com/news/2019/01/aws-app-mesh/
@@ -2142,3 +2173,4 @@ This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](ht
 - **Circuit breaking** : https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/circuit_breaking#arch-overview-circuit-break
 - **Envoy defaults set by App Mesh** : https://docs.aws.amazon.com/app-mesh/latest/userguide/envoy-defaults.html#default-circuit-breaker
 - **Monolithic vs Microservices Architecture** : https://www.geeksforgeeks.org/monolithic-vs-microservices-architecture/
+
