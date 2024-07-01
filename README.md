@@ -53,7 +53,7 @@ As we already stated we are living in a world were microservice architectures ar
 
 First of all you need an AWS Route 53 domain, the one we will use here is **skyscaledev.com**.
 
-Be also sure you have installed the following tools installed : 
+Be also sure you have the following tools installed : 
 
 - Terraform
 - AWS CLI
@@ -77,7 +77,8 @@ The following AWS Services are used :
 
 - Amazon EKS
 - Amazon EC2
-- Amazon Gognito
+- AWS API Gateway
+- Amazon Cognito
 - AWS Cloudfront
 - AWS Lambda
 - AWS CloudMap
