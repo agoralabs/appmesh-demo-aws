@@ -1,11 +1,11 @@
-# Building a Service Mesh Demo Platform with Terraform in AWS Cloud
+# My Service Mesh journey with Terraform on AWS Cloud
 
 In the ever-evolving landscape of modern applications and cloud native architectures, the need for efficient, scalable, and secure communication between services is paramount.
-If you still have a doubt for your own organization, just take a look at your workloads and if you are deploying more and more services and observing thoses services is a bit challenging, for sure your organization definitely need a service Mesh.
+If you still have a doubt for your own organization, just take a look at your workloads and if you are deploying more and more services and observing thoses services is a bit challenging, for sure your organization probably need a service Mesh.
 
 ![Microservices Before and After](/images/00_1_servicemesh_before_after_1.png)
 
-Our purpose is to showcase the capabilities of service mesh concept on Amazon Web Services Cloud (AWS) with Terraform. But before diving into terraform code, let's explore some core knowledge to better understanging of the service Mesh interesting concept.
+My purpose is to showcase the capabilities of service mesh concept on Amazon Web Services Cloud (AWS) with Terraform. AWS App Mesh is AWS implementation of the mesh concept and his primary purpose is to allow developers to focus on innovation rather than infrastructure. But before diving into terraform code, let's explore some core knowledge to better understanging of the service Mesh interesting concept.
 
 ## Why an organization needs a service mesh?
 
@@ -42,16 +42,14 @@ A proxy acts as an intermediary gateway between your organization’s network an
 
 ![Service Mesh works](/images/00_2_how_service_mesh_works_1.png)
 
-# Let's dive into our demo Architeture solution
+# Let's dive into my Demo Architecture Solution
 
-We need a Service Mesh demo platform deployed on Amazon Web Services Cloud (AWS) to showcase the capabilities of service mesh concept.
-A service mesh is an infrastructure layer dedicated to managing and securing communications between microservices within a distributed architecture. 
-Essentially, it is a network of interconnected microservices that communicate through sidecar proxies deployed alongside each service. 
+As we already stated we are living in a world were microservice architectures are becoming increasingly complex. Companies are constantly seeking solutions to enhance the resilience, security, and visibility of their distributed applications. This is where AWS App Mesh comes into play by offering enhanced observability, granular traffic control, and improved security. Just discover throught this solution proposal how this revolutionary solution is transforming the way we design and operate modern applications. 
 
 
 ## Prerequisites
 
-First of all you need an AWS Route 53 domain, the one we will use here is skyscaledev.com.
+First of all you need an AWS Route 53 domain, the one we will use here is **skyscaledev.com**.
 
 Be also sure you have installed the following tools installed : 
 
