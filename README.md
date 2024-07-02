@@ -2159,6 +2159,9 @@ X-Ray Traces Map
 
 App Mesh, being a managed service, reduces the complexity and overhead of managing the service mesh. There many other features provided by App Mesh that we didn't cover in deep like Traffic shifting, Request Timeouts, Circuit Breaker, Retry or mTLS.
 
+Due to the number of steps we went through, people can think that this shift is a way to complex, but in my point of view, all the dirty stuff is just done one time, and after everything is setup correctly, Developpers will enjoy and will find it easy to dive in a world full of **sidecars** as you can see in the following image, each line represent a pod we created in Kubernetes cluster, and each small green square represent a sidecar container, so beside each application you deploy an envoy container, an x-ray container, a fluentd container will be added as sidecars to give you the maximum observability on what's is going on inside your Kubernetes cluster.
+
+![App Mesh Pods and containers and sidecars](/images/eks_pods.png)
 
 This demo could also be easy lauch using the kaiac tool [App Mesh with KaiaC](https://www.kaiac.io/solutions/appmesh).
 
